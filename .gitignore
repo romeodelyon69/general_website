@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Data (ne pas écraser les données du NAS)
+backend/data/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build
+dist/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
