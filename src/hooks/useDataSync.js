@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 // Keys that are synced to the server (everything except ephemeral UI state)
 const SYNC_KEYS = [
   'todos', 'ideas', 'groceries',
-  'sportActivities', 'sportEvents', 'sportSchedule', 'workoutSessions',
+  'sportActivities', 'sportEvents', 'sportSchedule', 'workoutSessions', 'workoutLogs',
   'recipes', 'mealPlan', 'weekRecipes',
   'pet', 'purchasedItems', 'equippedItems',
 ]

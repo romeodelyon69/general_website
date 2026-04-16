@@ -11,12 +11,13 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import {
-  Plus, Dumbbell, Trash2, Check, Clock, ChevronLeft, ChevronRight, Pencil, Search, ListOrdered, Repeat, CalendarPlus,
+  Plus, Dumbbell, Trash2, Check, Clock, ChevronLeft, ChevronRight, Pencil, Search, ListOrdered, Repeat, CalendarPlus, Play, TrendingUp,
 } from 'lucide-react'
 import { useStore } from '../store'
 import { getWeekDays, dateStr, getSportType, SPORT_TYPES } from '../utils/helpers'
 import AddActivityModal from '../features/sport/AddActivityModal'
 import WorkoutSessionModal, { WORKOUT_CATEGORIES } from '../features/sport/WorkoutSessionModal'
+import WorkoutPlayerModal, { FEELINGS } from '../features/sport/WorkoutPlayerModal'
 import PlanifyModal from '../features/sport/PlanifyModal'
 import Modal from '../components/Modal'
 import { addWeeks, subWeeks, format, isToday, getDay } from 'date-fns'
@@ -153,7 +154,7 @@ function SportEventCard({ event, onComplete, onDelete }) {
 }
 
 /* ─── Workout session card ───────────────────────────────────────────────── */
-function WorkoutSessionCard({ session, onEdit, onDelete, onPlanify }) {
+function WorkoutSessionCard({ session, onEdit, onDelete, onPlanify, onPlay }) {
   const [expanded, setExpanded] = useState(false)
   const cat = WORKOUT_CATEGORIES.find(c => c.id === session.category)
 
@@ -176,6 +177,13 @@ function WorkoutSessionCard({ session, onEdit, onDelete, onPlanify }) {
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onPlay}
+            className="p-1.5 rounded-lg text-white bg-mint-500 hover:bg-mint-600 transition-colors"
+            title="Lancer la séance"
+          >
+            <Play size={14} />
+          </button>
           <button
             onClick={() => setExpanded(v => !v)}
             className="p-1.5 rounded-lg text-gray-400 hover:text-mint-600 hover:bg-mint-50 transition-colors"
@@ -236,7 +244,7 @@ function WorkoutSessionCard({ session, onEdit, onDelete, onPlanify }) {
 }
 
 /* ─── Séances tab ────────────────────────────────────────────────────────── */
-function SeancesTab({ onPlanify }) {
+function SeancesTab({ onPlanify, onPlay }) {
   const { workoutSessions, deleteWorkoutSession } = useStore()
   const [sessionOpen,  setSessionOpen]  = useState(false)
   const [editSession,  setEditSession]  = useState(null)
@@ -314,6 +322,7 @@ function SeancesTab({ onPlanify }) {
                 onEdit={() => openEdit(session)}
                 onDelete={() => deleteWorkoutSession(session.id)}
                 onPlanify={() => onPlanify(session)}
+                onPlay={() => onPlay(session)}
               />
             ))}
           </AnimatePresence>
@@ -429,6 +438,197 @@ function ActivityPickerModal({ open, onClose, onSelect, activities }) {
   )
 }
 
+/* ─── Mini SVG line chart ────────────────────────────────────────────────── */
+function MiniLineChart({ points, color = '#34d399' }) {
+  if (points.length === 0) return (
+    <div className="h-20 flex items-center justify-center text-xs text-gray-300 font-semibold">
+      Pas encore de données
+    </div>
+  )
+  const W = 280, H = 70, PL = 32, PR = 8, PT = 8, PB = 22
+  const values = points.map(p => p.y)
+  const minY = Math.min(...values)
+  const maxY = Math.max(...values)
+  const rangeY = maxY - minY || 1
+  const x = i => PL + (i / Math.max(points.length - 1, 1)) * (W - PL - PR)
+  const y = v => PT + (1 - (v - minY) / rangeY) * (H - PT - PB)
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.y).toFixed(1)}`).join(' ')
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      {/* Y axis */}
+      <text x={PL - 4} y={PT + 5} textAnchor="end" fontSize="7" fill="#9ca3af">{maxY}kg</text>
+      {minY !== maxY && (
+        <text x={PL - 4} y={H - PB + 4} textAnchor="end" fontSize="7" fill="#9ca3af">{minY}kg</text>
+      )}
+      {/* Grid line */}
+      <line x1={PL} y1={PT} x2={PL} y2={H - PB} stroke="#e5e7eb" strokeWidth="0.5" />
+      {/* Line */}
+      <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Dots + labels */}
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={x(i)} cy={y(p.y)} r="3" fill={color} />
+          <text x={x(i)} y={H - 2} textAnchor="middle" fontSize="6.5" fill="#9ca3af">
+            {p.label}
+          </text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+/* ─── Workout history tab ────────────────────────────────────────────────── */
+function WorkoutHistoryTab() {
+  const { workoutLogs, workoutSessions, deleteWorkoutLog } = useStore()
+  const [selectedSession, setSelectedSession] = useState(null)
+
+  // Sessions that have at least one log
+  const sessionsWithLogs = workoutSessions.filter(s =>
+    workoutLogs.some(l => l.sessionId === s.id)
+  )
+
+  // Logs for selected session, sorted by date asc
+  const filteredLogs = workoutLogs
+    .filter(l => l.sessionId === selectedSession)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  // Build chart data: for each exercise, max weight per date
+  const selectedSessionDef = workoutSessions.find(s => s.id === selectedSession)
+  const chartData = selectedSessionDef?.exercises.map(ex => {
+    const points = filteredLogs.map(log => {
+      const exLog = log.exercises.find(e => e.id === ex.id)
+      const weights = exLog?.sets.map(s => s.weight).filter(Boolean) ?? []
+      return {
+        y: weights.length ? Math.max(...weights) : 0,
+        label: log.date.slice(5), // MM-DD
+        date: log.date,
+      }
+    }).filter(p => p.y > 0)
+    return { exercise: ex, points }
+  }) ?? []
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-black text-gray-800">Historique</h1>
+        <p className="text-sm text-gray-500 mt-0.5">
+          {workoutLogs.length} séance{workoutLogs.length !== 1 ? 's' : ''} enregistrée{workoutLogs.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+
+      {workoutLogs.length === 0 ? (
+        <div className="text-center py-16">
+          <TrendingUp size={40} className="mx-auto text-gray-200 mb-3" />
+          <p className="text-gray-400 font-semibold">Lance une séance pour voir ta progression !</p>
+        </div>
+      ) : (
+        <>
+          {/* Session selector */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedSession(null)}
+              className={clsx(
+                'px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all',
+                !selectedSession
+                  ? 'bg-gray-700 text-white border-transparent'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              )}
+            >
+              Journal
+            </button>
+            {sessionsWithLogs.map(s => (
+              <button
+                key={s.id}
+                onClick={() => setSelectedSession(s.id)}
+                className={clsx(
+                  'px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all flex items-center gap-1',
+                  selectedSession === s.id
+                    ? 'bg-mint-100 text-mint-700 border-mint-400'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                )}
+              >
+                {s.emoji} {s.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Journal view (no session selected) */}
+          {!selectedSession && (
+            <div className="space-y-3">
+              {[...workoutLogs]
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map(log => (
+                  <div key={log.id} className="card !p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{log.emoji}</span>
+                        <div>
+                          <p className="font-bold text-gray-800">{log.sessionName}</p>
+                          <p className="text-xs text-gray-400">
+                            {log.date} · {Math.floor(log.duration / 60)}min
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => deleteWorkoutLog(log.id)}
+                        className="p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {log.exercises.map(ex => (
+                        <div key={ex.id}>
+                          <p className="text-xs font-bold text-gray-600 mb-1">{ex.name}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {ex.sets.map((s, i) => {
+                              const f = FEELINGS.find(f => f.id === s.feeling)
+                              return (
+                                <span
+                                  key={i}
+                                  className="text-[11px] bg-cream-50 rounded-lg px-2 py-0.5 font-semibold text-gray-600"
+                                >
+                                  {s.weight}kg×{s.reps} {f?.emoji}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Progression charts for selected session */}
+          {selectedSession && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">
+                {filteredLogs.length} séance{filteredLogs.length !== 1 ? 's' : ''} · progression poids par exercice
+              </p>
+              {chartData.map(({ exercise: ex, points }) => (
+                <div key={ex.id} className="card !p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-gray-800 text-sm">{ex.name}</p>
+                    {points.length > 0 && (
+                      <span className="text-xs font-bold text-mint-600">
+                        Max : {Math.max(...points.map(p => p.y))}kg
+                      </span>
+                    )}
+                  </div>
+                  <MiniLineChart points={points} color="#34d399" />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 /* ─── Main page ─────────────────────────────────────────────────────────── */
 export default function SportPage() {
   const {
@@ -448,6 +648,8 @@ export default function SportPage() {
   const [pickerDate,     setPickerDate]     = useState(null)
   const [planifyOpen,    setPlanifyOpen]    = useState(false)
   const [planifySession, setPlanifySession] = useState(null)
+  const [playerOpen,     setPlayerOpen]     = useState(false)
+  const [playerSession,  setPlayerSession]  = useState(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -519,8 +721,9 @@ export default function SportPage() {
         {/* Tab switcher */}
         <div className="flex gap-1.5 p-1 bg-cream-100 rounded-2xl w-fit">
           {[
-            { id: 'planning', label: '📅 Planning' },
-            { id: 'seances',  label: '🏋️ Séances' },
+            { id: 'planning',   label: '📅 Planning' },
+            { id: 'seances',    label: '🏋️ Séances' },
+            { id: 'historique', label: '📊 Historique' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -539,8 +742,14 @@ export default function SportPage() {
 
         {/* Séances tab */}
         {activeTab === 'seances' && (
-          <SeancesTab onPlanify={(session) => { setPlanifySession(session); setPlanifyOpen(true) }} />
+          <SeancesTab
+            onPlanify={(session) => { setPlanifySession(session); setPlanifyOpen(true) }}
+            onPlay={(session) => { setPlayerSession(session); setPlayerOpen(true) }}
+          />
         )}
+
+        {/* Historique tab */}
+        {activeTab === 'historique' && <WorkoutHistoryTab />}
 
         {/* Planning tab */}
         {activeTab === 'planning' && <>
@@ -781,6 +990,12 @@ export default function SportPage() {
         open={planifyOpen}
         onClose={() => { setPlanifyOpen(false); setPlanifySession(null) }}
         session={planifySession}
+      />
+
+      <WorkoutPlayerModal
+        open={playerOpen}
+        onClose={() => { setPlayerOpen(false); setPlayerSession(null) }}
+        session={playerSession}
       />
     </DndContext>
   )

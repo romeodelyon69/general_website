@@ -193,6 +193,17 @@ export const useStore = create((set, get) => ({
         workoutSessions: s.workoutSessions.filter(w => w.id !== id),
       })),
 
+      // ─── Workout logs (historique des séances jouées) ───────────────────
+      workoutLogs: [],
+
+      addWorkoutLog: (log) => set((s) => ({
+        workoutLogs: [...s.workoutLogs, log],
+      })),
+
+      deleteWorkoutLog: (id) => set((s) => ({
+        workoutLogs: s.workoutLogs.filter(l => l.id !== id),
+      })),
+
       // ─── Recipes ────────────────────────────────────────────────────────
       recipes: DEFAULT_RECIPES,
 
@@ -303,6 +314,7 @@ export const useStore = create((set, get) => ({
         sportEvents:      serverData.sportEvents      ?? s.sportEvents,
         sportSchedule:    serverData.sportSchedule    ?? s.sportSchedule,
         workoutSessions:  serverData.workoutSessions  ?? s.workoutSessions,
+        workoutLogs:      serverData.workoutLogs      ?? s.workoutLogs,
         recipes:          serverData.recipes          ?? s.recipes,
         mealPlan:         serverData.mealPlan         ?? s.mealPlan,
         weekRecipes:      serverData.weekRecipes      ?? s.weekRecipes,
@@ -320,6 +332,7 @@ export const useStore = create((set, get) => ({
         sportEvents:      [],
         sportSchedule:    [],
         workoutSessions:  [],
+        workoutLogs:      [],
         recipes:          DEFAULT_RECIPES,
         mealPlan:         {},
         weekRecipes:      [],
