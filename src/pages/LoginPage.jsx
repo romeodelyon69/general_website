@@ -44,7 +44,6 @@ export default function LoginPage() {
             ✨
           </div>
           <h1 className="text-3xl font-black text-gray-800">Planner</h1>
-          <p className="text-gray-500 mt-1 font-medium">ton espace bien-être</p>
         </div>
 
         {/* Card */}

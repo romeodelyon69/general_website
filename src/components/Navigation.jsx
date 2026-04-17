@@ -1,60 +1,76 @@
 import { motion } from 'framer-motion'
-import { LayoutDashboard, CheckSquare, Dumbbell, Utensils, LogOut, ShoppingCart, Lightbulb } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, Dumbbell, Utensils, LogOut, ShoppingCart, Lightbulb, Shield } from 'lucide-react'
 import { useStore } from '../store'
 import { useAuth } from '../contexts/AuthContext'
-import clsx from 'clsx'
+import { getTheme } from '../themes'
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Accueil',   icon: LayoutDashboard, color: 'text-coral-500' },
-  { id: 'todo',      label: 'Tâches',    icon: CheckSquare,     color: 'text-lavender-500' },
-  { id: 'sport',     label: 'Sport',     icon: Dumbbell,        color: 'text-mint-500' },
-  { id: 'meals',     label: 'Repas',     icon: Utensils,        color: 'text-amber-500' },
-  { id: 'grocery',   label: 'Courses',   icon: ShoppingCart,    color: 'text-emerald-500' },
-  { id: 'ideas',     label: 'Idées',     icon: Lightbulb,       color: 'text-yellow-500' },
+  { id: 'dashboard', label: 'Accueil',  icon: LayoutDashboard },
+  { id: 'todo',      label: 'Tâches',   icon: CheckSquare },
+  { id: 'sport',     label: 'Sport',    icon: Dumbbell },
+  { id: 'meals',     label: 'Repas',    icon: Utensils },
+  { id: 'grocery',   label: 'Courses',  icon: ShoppingCart },
+  { id: 'ideas',     label: 'Idées',    icon: Lightbulb },
 ]
+const ADMIN_ITEM = { id: 'admin', label: 'Admin', icon: Shield }
 
 export default function Navigation({ onLogout }) {
   const { page, setPage } = useStore()
-  const { username } = useAuth()
+  const { username, isAdmin } = useAuth()
+  const theme = getTheme(page)
+  const navItems = isAdmin ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS
 
   return (
     <>
-      {/* ── Sidebar (desktop) ────────────────────────────────────── */}
-      <aside className="hidden md:flex flex-col w-64 shrink-0 h-screen sticky top-0 bg-white border-r border-gray-100 shadow-soft py-6 px-4">
+      {/* ── Sidebar (desktop) ─────────────────────────────────────────── */}
+      <aside
+        className="hidden md:flex flex-col w-64 shrink-0 h-screen sticky top-0 py-6 px-4"
+        style={{
+          backgroundColor: theme.navBg,
+          borderRight: `1px solid ${theme.navBorder}`,
+          transition: 'background-color 0.5s ease, border-color 0.5s ease',
+        }}
+      >
         {/* Logo */}
         <div className="flex items-center gap-3 px-2 mb-8">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-coral-400 to-lavender-500 flex items-center justify-center text-white font-black text-lg shadow-glow">
+          <div
+            className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-lg"
+            style={{ background: `linear-gradient(135deg, ${theme.accent}ee, ${theme.accent}88)` }}
+          >
             ✨
           </div>
-          <div>
-            <p className="font-black text-gray-800 leading-none">Planner</p>
-            <p className="text-xs text-gray-400 font-semibold">ton espace bien-être</p>
-          </div>
+          <p className="font-black leading-none text-sm" style={{ color: theme.navActiveText }}>
+            Planner
+          </p>
         </div>
 
         {/* Nav links */}
         <nav className="flex flex-col gap-1 flex-1">
-          {NAV_ITEMS.map(({ id, label, icon: Icon, color }) => {
+          {navItems.map(({ id, label, icon: Icon }) => {
             const active = page === id
             return (
               <button
                 key={id}
                 onClick={() => setPage(id)}
-                className={clsx(
-                  'relative flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold text-sm transition-all duration-200',
-                  active
-                    ? 'bg-cream-100 text-gray-800 shadow-sm'
-                    : 'text-gray-500 hover:bg-cream-50 hover:text-gray-700'
-                )}
+                className="relative flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold text-sm transition-all duration-200"
+                style={{
+                  backgroundColor: active ? theme.navActiveBg : 'transparent',
+                  color: active ? theme.navActiveText : theme.navText,
+                }}
               >
                 {active && (
                   <motion.div
                     layoutId="nav-pill"
-                    className="absolute inset-0 bg-cream-100 rounded-2xl"
+                    className="absolute inset-0 rounded-2xl"
+                    style={{ backgroundColor: theme.navActiveBg }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
-                <Icon size={18} className={clsx('relative z-10 shrink-0', active ? color : '')} />
+                <Icon
+                  size={18}
+                  className="relative z-10 shrink-0"
+                  style={{ color: active ? theme.navActiveText : theme.navText }}
+                />
                 <span className="relative z-10">{label}</span>
               </button>
             )
@@ -63,32 +79,42 @@ export default function Navigation({ onLogout }) {
 
         {/* User + logout */}
         <div className="px-2 mb-2 flex items-center justify-between">
-          <span className="text-xs font-bold text-gray-500 truncate">👤 {username}</span>
+          <span
+            className="text-xs font-bold truncate"
+            style={{ color: theme.navText }}
+          >
+            👤 {username}
+          </span>
           <button
             onClick={onLogout}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            className="p-1.5 rounded-lg transition-colors hover:opacity-80"
+            style={{ color: theme.textMuted }}
             title="Déconnexion"
           >
             <LogOut size={14} />
           </button>
         </div>
-
       </aside>
 
-      {/* ── Bottom bar (mobile) ──────────────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-100 flex">
-        {NAV_ITEMS.map(({ id, label, icon: Icon, color }) => {
+      {/* ── Bottom bar (mobile) ────────────────────────────────────────── */}
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 flex"
+        style={{
+          backgroundColor: theme.navBg,
+          borderTop: `1px solid ${theme.navBorder}`,
+          transition: 'background-color 0.5s ease',
+        }}
+      >
+        {navItems.map(({ id, label, icon: Icon }) => {
           const active = page === id
           return (
             <button
               key={id}
               onClick={() => setPage(id)}
-              className={clsx(
-                'flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-all duration-200',
-                active ? 'text-gray-800' : 'text-gray-400'
-              )}
+              className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-all duration-200"
+              style={{ color: active ? theme.navActiveText : theme.navText }}
             >
-              <Icon size={20} className={active ? color : ''} />
+              <Icon size={20} />
               <span className="text-[10px] font-bold">{label}</span>
             </button>
           )
@@ -97,4 +123,3 @@ export default function Navigation({ onLogout }) {
     </>
   )
 }
-

@@ -9,6 +9,7 @@ module.exports = function requireAuth(req, res, next) {
   try {
     const payload = jwt.verify(header.slice(7), JWT_SECRET)
     req.userId = payload.userId
+    req.isAdmin = payload.isAdmin === true
     next()
   } catch {
     res.status(401).json({ error: 'Token invalide ou expiré' })

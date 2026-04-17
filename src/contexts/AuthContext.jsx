@@ -7,6 +7,7 @@ const BASE = '/api'
 export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(null)
   const [username,    setUsername]    = useState(null)
+  const [isAdmin,     setIsAdmin]     = useState(false)
   const [status,      setStatus]      = useState('loading') // 'loading' | 'auth' | 'guest'
   const refreshTimerRef = useRef(null)
 
@@ -24,9 +25,10 @@ export function AuthProvider({ children }) {
         credentials: 'include',   // send httpOnly cookie
       })
       if (!res.ok) throw new Error('refresh failed')
-      const { accessToken: token, username: user } = await res.json()
+      const { accessToken: token, username: user, isAdmin: admin } = await res.json()
       setAccessToken(token)
       setUsername(user)
+      setIsAdmin(admin === true)
       setStatus('auth')
       scheduleRefresh()
     } catch {
@@ -72,9 +74,10 @@ export function AuthProvider({ children }) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.error ?? 'Identifiants incorrects')
     }
-    const { accessToken: token, username: uname } = await res.json()
+    const { accessToken: token, username: uname, isAdmin: admin } = await res.json()
     setAccessToken(token)
     setUsername(uname)
+    setIsAdmin(admin === true)
     setStatus('auth')
     scheduleRefresh()
     return token
@@ -92,9 +95,10 @@ export function AuthProvider({ children }) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.error ?? 'Erreur lors de l\'inscription')
     }
-    const { accessToken: token, username: uname } = await res.json()
+    const { accessToken: token, username: uname, isAdmin: admin } = await res.json()
     setAccessToken(token)
     setUsername(uname)
+    setIsAdmin(admin === true)
     setStatus('auth')
     scheduleRefresh()
     return token
@@ -106,11 +110,12 @@ export function AuthProvider({ children }) {
     clearTimeout(refreshTimerRef.current)
     setAccessToken(null)
     setUsername(null)
+    setIsAdmin(false)
     setStatus('guest')
   }, [])
 
   return (
-    <AuthContext.Provider value={{ accessToken, username, status, login, register, logout, api }}>
+    <AuthContext.Provider value={{ accessToken, username, isAdmin, status, login, register, logout, api }}>
       {children}
     </AuthContext.Provider>
   )

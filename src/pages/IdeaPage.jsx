@@ -1,23 +1,25 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Pencil, Lightbulb, Check } from 'lucide-react'
+import { Plus, Trash2, Pencil, Lightbulb } from 'lucide-react'
 import { useStore } from '../store'
-import clsx from 'clsx'
+import { getTheme } from '../themes'
 
 const STATUSES = [
-  { id: 'idea',    label: 'Idée',       color: 'bg-lavender-100 text-lavender-700 border-lavender-200' },
-  { id: 'doing',   label: 'En cours',   color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  { id: 'done',    label: 'Réalisée',   color: 'bg-mint-100 text-mint-700 border-mint-200' },
+  { id: 'idea',  label: 'Idée',     dot: '#a78bfa' },
+  { id: 'doing', label: 'En cours', dot: '#f59e0b' },
+  { id: 'done',  label: 'Réalisée', dot: '#34d399' },
 ]
 
 export default function IdeaPage() {
-  const { ideas, addIdea, deleteIdea, updateIdea } = useStore()
-  const [input,     setInput]     = useState('')
-  const [filter,    setFilter]    = useState('all')
+  const store = useStore()
+  const { ideas, addIdea, deleteIdea, updateIdea, page } = store
+  const theme = getTheme(page)
+  const [input,  setInput]  = useState('')
+  const [filter, setFilter] = useState('all')
   const inputRef = useRef(null)
 
   const filtered = filter === 'all' ? ideas : ideas.filter(i => i.status === filter)
-  const counts   = STATUSES.reduce((acc, s) => ({ ...acc, [s.id]: ideas.filter(i => i.status === s.id).length }), {})
+  const counts   = STATUSES.reduce((a, s) => ({ ...a, [s.id]: ideas.filter(i => i.status === s.id).length }), {})
 
   const handleAdd = (e) => {
     e.preventDefault()
@@ -31,8 +33,10 @@ export default function IdeaPage() {
     <div className="page-enter max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-gray-800">Idées d'amélioration</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <h1 className="text-2xl font-black" style={{ color: theme.textPrimary }}>
+          Idées d'amélioration
+        </h1>
+        <p className="text-sm mt-0.5" style={{ color: theme.textSecondary }}>
           {ideas.length} idée{ideas.length !== 1 ? 's' : ''} · {counts.done ?? 0} réalisée{(counts.done ?? 0) !== 1 ? 's' : ''}
         </p>
       </div>
@@ -41,7 +45,12 @@ export default function IdeaPage() {
       <form onSubmit={handleAdd} className="flex gap-2">
         <input
           ref={inputRef}
-          className="input flex-1"
+          className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 outline-none"
+          style={{
+            background: theme.inputBg,
+            border: `1px solid ${theme.inputBorder}`,
+            color: theme.textPrimary,
+          }}
           placeholder="Nouvelle idée d'amélioration…"
           value={input}
           onChange={e => setInput(e.target.value)}
@@ -50,22 +59,27 @@ export default function IdeaPage() {
         <button
           type="submit"
           disabled={!input.trim()}
-          className="btn-primary px-4 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-4 rounded-xl font-semibold transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40"
+          style={{ background: theme.accent, color: theme.accentText }}
         >
           <Plus size={18} />
         </button>
       </form>
 
-      {/* Filter tabs */}
-      <div className="flex gap-2">
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setFilter('all')}
-          className={clsx(
-            'px-4 py-1.5 rounded-xl text-xs font-bold border-2 transition-all',
-            filter === 'all'
-              ? 'bg-gray-700 text-white border-transparent'
-              : 'border-gray-200 text-gray-600 hover:border-gray-300'
-          )}
+          className="px-4 py-1.5 rounded-xl text-xs font-bold transition-all"
+          style={filter === 'all' ? {
+            background: theme.accentBg,
+            color: theme.accent,
+            border: `1px solid ${theme.accent}55`,
+          } : {
+            background: 'transparent',
+            color: theme.textSecondary,
+            border: `1px solid ${theme.cardBorder}`,
+          }}
         >
           Toutes ({ideas.length})
         </button>
@@ -73,12 +87,16 @@ export default function IdeaPage() {
           <button
             key={s.id}
             onClick={() => setFilter(s.id)}
-            className={clsx(
-              'px-4 py-1.5 rounded-xl text-xs font-bold border-2 transition-all',
-              filter === s.id
-                ? `${s.color}`
-                : 'border-gray-200 text-gray-600 hover:border-gray-300'
-            )}
+            className="px-4 py-1.5 rounded-xl text-xs font-bold transition-all"
+            style={filter === s.id ? {
+              background: `${s.dot}22`,
+              color: s.dot,
+              border: `1px solid ${s.dot}55`,
+            } : {
+              background: 'transparent',
+              color: theme.textSecondary,
+              border: `1px solid ${theme.cardBorder}`,
+            }}
           >
             {s.label} ({counts[s.id] ?? 0})
           </button>
@@ -88,21 +106,19 @@ export default function IdeaPage() {
       {/* Ideas list */}
       {filtered.length === 0 ? (
         <div className="text-center py-16">
-          <Lightbulb size={40} className="mx-auto text-gray-200 mb-3" />
-          <p className="text-gray-400 font-semibold">
-            {filter === 'all' ? 'Aucune idée pour l\'instant' : 'Aucune idée dans cette catégorie'}
+          <Lightbulb size={40} className="mx-auto mb-3" style={{ color: theme.textMuted }} />
+          <p className="font-semibold" style={{ color: theme.textSecondary }}>
+            {filter === 'all' ? "Aucune idée pour l'instant" : 'Aucune idée dans cette catégorie'}
           </p>
-          {filter === 'all' && (
-            <p className="text-sm text-gray-300 mt-1">Ajoute ta première idée ci-dessus</p>
-          )}
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           <AnimatePresence initial={false}>
             {filtered.map(idea => (
               <IdeaItem
                 key={idea.id}
                 idea={idea}
+                theme={theme}
                 onDelete={() => deleteIdea(idea.id)}
                 onUpdate={(patch) => updateIdea(idea.id, patch)}
               />
@@ -114,11 +130,11 @@ export default function IdeaPage() {
   )
 }
 
-function IdeaItem({ idea, onDelete, onUpdate }) {
+function IdeaItem({ idea, theme, onDelete, onUpdate }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState(idea.text)
   const editRef = useRef(null)
-  const status  = STATUSES.find(s => s.id === idea.status) ?? STATUSES[0]
+  const status = STATUSES.find(s => s.id === idea.status) ?? STATUSES[0]
 
   const nextStatus = () => {
     const idx = STATUSES.findIndex(s => s.id === idea.status)
@@ -132,8 +148,8 @@ function IdeaItem({ idea, onDelete, onUpdate }) {
   }
 
   const commitEdit = () => {
-    const trimmed = draft.trim()
-    if (trimmed && trimmed !== idea.text) onUpdate({ text: trimmed })
+    const t = draft.trim()
+    if (t && t !== idea.text) onUpdate({ text: t })
     else setDraft(idea.text)
     setEditing(false)
   }
@@ -143,71 +159,93 @@ function IdeaItem({ idea, onDelete, onUpdate }) {
     if (e.key === 'Escape') { setDraft(idea.text); setEditing(false) }
   }
 
+  /* Sticky note card — always light bg on corkboard */
+  const cardText = theme.cardTextPrimary ?? theme.textPrimary
+  const cardMuted = theme.cardTextMuted ?? theme.textMuted
+
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: -8, rotate: -0.5 }}
+      animate={{ opacity: 1, y: 0, rotate: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.18 }}
-      className={clsx(
-        'group flex items-start gap-3 p-4 bg-white rounded-2xl border-l-4 shadow-soft transition-all duration-200',
-        idea.status === 'done'  ? 'border-l-mint-400 opacity-70' :
-        idea.status === 'doing' ? 'border-l-amber-400' : 'border-l-lavender-400'
-      )}
+      transition={{ duration: 0.2 }}
+      className="group relative rounded-2xl p-4 shadow-md"
+      style={{
+        background: theme.cardBg,
+        border: `1px solid ${theme.cardBorder}`,
+        opacity: idea.status === 'done' ? 0.7 : 1,
+      }}
     >
-      {/* Status badge (clickable to cycle) */}
-      <button
-        onClick={nextStatus}
-        className={clsx(
-          'mt-0.5 shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold border whitespace-nowrap transition-all hover:opacity-80',
-          status.color
-        )}
-        title="Changer le statut"
-      >
-        {status.label}
-      </button>
-
-      {/* Text */}
-      <div className="flex-1 min-w-0">
-        {editing ? (
-          <textarea
-            ref={editRef}
-            className="w-full text-sm font-semibold text-gray-700 bg-white border border-lavender-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-lavender-300 resize-none"
-            value={draft}
-            rows={Math.max(1, Math.ceil(draft.length / 60))}
-            onChange={e => setDraft(e.target.value)}
-            onBlur={commitEdit}
-            onKeyDown={handleKeyDown}
-          />
-        ) : (
-          <p className={clsx(
-            'text-sm font-semibold text-gray-700 leading-snug',
-            idea.status === 'done' && 'line-through text-gray-400'
-          )}>
-            {idea.text}
-          </p>
-        )}
-        <p className="text-xs text-gray-400 mt-1">{idea.createdAt}</p>
-      </div>
-
-      {/* Actions */}
-      {!editing && (
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button
-            onClick={startEdit}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-lavender-500 hover:bg-lavender-50 transition-colors"
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+      {/* Pin dot (corkboard only has cardTextPrimary) */}
+      {theme.cardTextPrimary && (
+        <div
+          className="absolute -top-2 left-6 w-4 h-4 rounded-full shadow-md"
+          style={{ background: theme.accent }}
+        />
       )}
+
+      <div className="flex items-start gap-3">
+        {/* Status badge */}
+        <button
+          onClick={nextStatus}
+          className="mt-0.5 shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold border whitespace-nowrap transition-all hover:opacity-80"
+          style={{ background: `${status.dot}20`, color: status.dot, borderColor: `${status.dot}40` }}
+          title="Changer le statut"
+        >
+          {status.label}
+        </button>
+
+        {/* Text */}
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <textarea
+              ref={editRef}
+              className="w-full text-sm font-semibold rounded-lg px-2 py-1 outline-none resize-none"
+              style={{
+                background: theme.inputBg,
+                border: `1px solid ${theme.accent}`,
+                color: cardText,
+              }}
+              value={draft}
+              rows={Math.max(1, Math.ceil(draft.length / 60))}
+              onChange={e => setDraft(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+            />
+          ) : (
+            <p
+              className={`text-sm font-semibold leading-snug ${idea.status === 'done' ? 'line-through' : ''}`}
+              style={{ color: idea.status === 'done' ? cardMuted : cardText }}
+            >
+              {idea.text}
+            </p>
+          )}
+          <p className="text-xs mt-1" style={{ color: cardMuted }}>{idea.createdAt}</p>
+        </div>
+
+        {/* Actions */}
+        {!editing && (
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <button
+              onClick={startEdit}
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: cardMuted }}
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={onDelete}
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: cardMuted }}
+              onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+              onMouseLeave={e => e.currentTarget.style.color = cardMuted}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
+      </div>
     </motion.div>
   )
 }

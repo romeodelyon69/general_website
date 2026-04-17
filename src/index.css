@@ -3,122 +3,142 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
-  html {
-    font-family: 'Nunito', system-ui, sans-serif;
-  }
+  html { font-family: 'Nunito', system-ui, sans-serif; }
 
   body {
-    background-color: #faf5ef;
+    background-color: #1a1209;
     color: #374151;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #e5e7eb;
-    border-radius: 10px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #d1d5db;
-  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 }
 
 @layer components {
   .card {
     @apply bg-white rounded-2xl shadow-soft p-5;
   }
-
   .btn-primary {
     @apply inline-flex items-center gap-2 px-4 py-2 bg-coral-500 hover:bg-coral-600
            text-white font-semibold rounded-xl transition-all duration-200
            shadow-glow-coral hover:shadow-none hover:-translate-y-0.5 active:translate-y-0;
   }
-
   .btn-secondary {
     @apply inline-flex items-center gap-2 px-4 py-2 bg-lavender-500 hover:bg-lavender-600
            text-white font-semibold rounded-xl transition-all duration-200
            shadow-glow hover:shadow-none hover:-translate-y-0.5 active:translate-y-0;
   }
-
   .btn-ghost {
     @apply inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-cream-100
            text-gray-600 font-semibold rounded-xl border border-gray-200
            transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0;
   }
-
   .btn-danger {
     @apply inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100
            text-red-500 font-semibold rounded-lg transition-all duration-150;
   }
-
   .input {
     @apply w-full px-4 py-2.5 bg-cream-50 border border-gray-200 rounded-xl
            text-gray-700 placeholder-gray-400 font-medium
            focus:outline-none focus:border-lavender-400 focus:ring-2 focus:ring-lavender-400/20
            transition-all duration-200;
   }
-
-  .label {
-    @apply block text-sm font-bold text-gray-600 mb-1.5;
-  }
-
-  .badge {
-    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold;
-  }
+  .label { @apply block text-sm font-bold text-gray-600 mb-1.5; }
+  .badge { @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold; }
 }
 
-/* Pet animations */
-.pet-float {
-  animation: float 2.8s ease-in-out infinite;
+/* ── Textures ──────────────────────────────────────────────────────────────── */
+
+/* Chalkboard: white chalk grain */
+.texture-chalk {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
 }
 
-.pet-bounce {
-  animation: petBounce 0.4s ease-out;
+/* Gym: subtle diagonal stripes */
+.texture-gym {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0px,
+    transparent 40px,
+    rgba(232,93,4,0.025) 40px,
+    rgba(232,93,4,0.025) 41px
+  );
 }
+
+/* Kitchen: warm bottom glow */
+.texture-kitchen {
+  background-image:
+    radial-gradient(ellipse at 50% 110%, rgba(201,168,76,0.09) 0%, transparent 55%),
+    radial-gradient(ellipse at 15% 50%, rgba(201,168,76,0.04) 0%, transparent 40%);
+}
+
+/* Kraft paper: warm noise + diagonal fiber */
+.texture-kraft {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.3 0 0 0 0 0.18 0 0 0 0 0.06 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(
+      100deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(107,58,31,0.025) 8px,
+      rgba(107,58,31,0.025) 9px
+    );
+  background-repeat: repeat, repeat;
+  background-size: 200px 200px, 100% 100%;
+}
+
+/* Cork: dot pattern */
+.texture-cork {
+  background-image:
+    radial-gradient(circle, rgba(0,0,0,0.22) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+  background-size: 10px 10px, 5px 5px;
+  background-position: 0 0, 5px 5px;
+}
+
+/* Tavern: warm top glow + subtle vertical wood grain */
+.texture-tavern {
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(212,160,23,0.08) 0%, transparent 60%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(212,160,23,0.012) 3px,
+      rgba(212,160,23,0.012) 4px
+    );
+}
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+.pet-float  { animation: float 2.8s ease-in-out infinite; }
+.pet-bounce { animation: petBounce 0.4s ease-out; }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50%       { transform: translateY(-10px); }
 }
-
 @keyframes petBounce {
   0%   { transform: scale(1); }
   40%  { transform: scale(1.18) rotate(-3deg); }
   70%  { transform: scale(0.95) rotate(2deg); }
   100% { transform: scale(1); }
 }
-
-/* Star sparkle animation */
 @keyframes sparkle {
   0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
   50%       { opacity: 1; transform: scale(1) rotate(180deg); }
 }
+.sparkle { animation: sparkle 1.2s ease-in-out forwards; }
+.dnd-overlay { @apply opacity-80 rotate-3 scale-105; }
 
-.sparkle {
-  animation: sparkle 1.2s ease-in-out forwards;
-}
-
-/* Drag overlay */
-.dnd-overlay {
-  @apply opacity-80 rotate-3 scale-105;
-}
-
-/* Smooth page transitions */
-.page-enter {
-  animation: pageIn 0.25s ease-out;
-}
-
+.page-enter { animation: pageIn 0.25s ease-out; }
 @keyframes pageIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }

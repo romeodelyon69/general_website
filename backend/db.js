@@ -33,9 +33,9 @@ const users = {
   getById: (id)     => Object.values(readJSON(USERS_F)).find(u => u.id === id) ?? null,
   getByUsername: (username) => readJSON(USERS_F)[username.toLowerCase()] ?? null,
 
-  create(id, username, passwordHash) {
+  create(id, username, passwordHash, isAdmin = false) {
     const all = readJSON(USERS_F)
-    all[username.toLowerCase()] = { id, username, passwordHash, createdAt: new Date().toISOString() }
+    all[username.toLowerCase()] = { id, username, passwordHash, createdAt: new Date().toISOString(), isAdmin }
     writeJSON(USERS_F, all)
   },
 }

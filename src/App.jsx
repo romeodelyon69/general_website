@@ -4,6 +4,7 @@ import { Loader } from 'lucide-react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { useDataSync } from './hooks/useDataSync'
 import { useStore } from './store'
+import { getTheme } from './themes'
 import Navigation from './components/Navigation'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
@@ -12,6 +13,7 @@ import SportPage from './pages/SportPage'
 import MealsPage from './pages/MealsPage'
 import GroceryPage from './pages/GroceryPage'
 import IdeaPage from './pages/IdeaPage'
+import AdminPage from './pages/AdminPage'
 
 const PAGES = {
   dashboard: DashboardPage,
@@ -20,16 +22,15 @@ const PAGES = {
   meals:     MealsPage,
   grocery:   GroceryPage,
   ideas:     IdeaPage,
+  admin:     AdminPage,
 }
 
-// ── Inner app (mounted only when authenticated) ────────────────────────────
 function AuthenticatedApp() {
   const { logout } = useAuth()
-  const { reset }  = useStore()
-  const { page }   = useStore()
+  const { reset, page } = useStore()
+  const theme = getTheme(page)
   const Page = PAGES[page] ?? DashboardPage
 
-  // Start syncing data with the server
   useDataSync()
 
   const handleLogout = async () => {
@@ -38,7 +39,13 @@ function AuthenticatedApp() {
   }
 
   return (
-    <div className="min-h-screen bg-cream-100 flex">
+    <div
+      className={`min-h-screen flex ${theme.pageTexture}`}
+      style={{
+        backgroundColor: theme.pageBg,
+        transition: 'background-color 0.5s ease',
+      }}
+    >
       <Navigation onLogout={handleLogout} />
       <main className="flex-1 min-w-0 overflow-y-auto">
         <div className="px-4 py-6 md:px-8 pb-24 md:pb-8">
@@ -59,18 +66,17 @@ function AuthenticatedApp() {
   )
 }
 
-// ── Root with auth gate ────────────────────────────────────────────────────
 function Root() {
   const { status } = useAuth()
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-cream-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#1a1209] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 rounded-3xl bg-gradient-to-br from-coral-400 to-lavender-500 flex items-center justify-center text-white text-2xl shadow-lift">
+          <div className="w-14 h-14 rounded-3xl bg-gradient-to-br from-amber-600 to-yellow-400 flex items-center justify-center text-white text-2xl shadow-lift">
             ✨
           </div>
-          <Loader size={20} className="animate-spin text-lavender-400" />
+          <Loader size={20} className="animate-spin text-amber-400" />
         </div>
       </div>
     )

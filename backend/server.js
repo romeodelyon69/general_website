@@ -3,6 +3,7 @@ const cors         = require('cors')
 const cookieParser = require('cookie-parser')
 const authRoutes   = require('./routes/auth')
 const dataRoutes   = require('./routes/data')
+const adminRoutes  = require('./routes/admin')
 
 const app  = express()
 const PORT = process.env.PORT || 3001
@@ -18,6 +19,7 @@ app.use(cors({
 // ── Routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes)
 app.use('/api/data', dataRoutes)
+app.use('/api/admin', adminRoutes)
 
 // ── Health check ──────────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ ok: true }))

@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, CheckSquare, Clock, CalendarCheck, RefreshCw, Filter } from 'lucide-react'
 import { useStore } from '../store'
+import { getTheme } from '../themes'
 import { isDueToday, isCompletedToday } from '../utils/helpers'
 import TodoItem from '../features/todo/TodoItem'
 import AddTaskModal from '../features/todo/AddTaskModal'
-import clsx from 'clsx'
 
 const FILTERS = [
   { id: 'today',     label: "Aujourd'hui", icon: Clock },
@@ -15,9 +15,11 @@ const FILTERS = [
 ]
 
 export default function TodoPage() {
-  const { todos } = useStore()
-  const [filter, setFilter]     = useState('today')
-  const [addOpen, setAddOpen]   = useState(false)
+  const store = useStore()
+  const { todos, page } = store
+  const theme = getTheme(page)
+  const [filter,   setFilter]   = useState('today')
+  const [addOpen,  setAddOpen]  = useState(false)
   const [editTask, setEditTask] = useState(null)
 
   const filtered = todos.filter(t => {
@@ -29,32 +31,43 @@ export default function TodoPage() {
 
   const todayCount = todos.filter(t => isDueToday(t)).length
   const doneCount  = todos.filter(t => isDueToday(t) && isCompletedToday(t)).length
+  const pct        = todayCount > 0 ? Math.round((doneCount / todayCount) * 100) : 0
 
   return (
     <div className="page-enter max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-gray-800">Mes tâches</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-2xl font-black" style={{ color: theme.textPrimary }}>
+            Mes tâches
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: theme.textSecondary }}>
             {doneCount}/{todayCount} tâches complétées aujourd'hui
           </p>
         </div>
-        <button className="btn-primary" onClick={() => { setEditTask(null); setAddOpen(true) }}>
+        <button
+          className="inline-flex items-center gap-2 px-4 py-2 font-semibold rounded-xl transition-all duration-200 hover:-translate-y-0.5"
+          style={{ background: theme.accent, color: theme.accentText }}
+          onClick={() => { setEditTask(null); setAddOpen(true) }}
+        >
           <Plus size={16} /> Nouvelle tâche
         </button>
       </div>
 
       {/* Progress bar */}
       {todayCount > 0 && (
-        <div className="card !p-4">
-          <div className="flex justify-between text-xs font-bold text-gray-500 mb-2">
+        <div
+          className="rounded-2xl p-4"
+          style={{ background: theme.cardBg, border: `1px solid ${theme.cardBorder}` }}
+        >
+          <div className="flex justify-between text-xs font-bold mb-2" style={{ color: theme.textSecondary }}>
             <span>Progression du jour</span>
-            <span>{Math.round((doneCount / todayCount) * 100)}%</span>
+            <span style={{ color: theme.accent }}>{pct}%</span>
           </div>
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-2.5 rounded-full overflow-hidden" style={{ background: theme.progressTrack }}>
             <motion.div
-              className="h-full bg-gradient-to-r from-lavender-400 to-coral-400 rounded-full"
+              className="h-full rounded-full"
+              style={{ background: theme.accent }}
               initial={{ width: 0 }}
               animate={{ width: `${(doneCount / todayCount) * 100}%` }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -64,9 +77,10 @@ export default function TodoPage() {
             <motion.p
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center text-sm font-bold text-mint-600 mt-2"
+              className="text-center text-sm font-bold mt-2"
+              style={{ color: theme.accent }}
             >
-              🎉 Toutes les tâches du jour sont terminées !
+              ✓ Toutes les tâches du jour sont terminées !
             </motion.p>
           )}
         </div>
@@ -78,20 +92,30 @@ export default function TodoPage() {
           <button
             key={id}
             onClick={() => setFilter(id)}
-            className={clsx(
-              'flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all duration-200 shrink-0',
-              filter === id
-                ? 'bg-lavender-500 text-white shadow-glow'
-                : 'bg-white text-gray-600 border border-gray-200 hover:bg-cream-50'
-            )}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all duration-200 shrink-0"
+            style={filter === id ? {
+              background: theme.accentBg,
+              color: theme.accent,
+              border: `1px solid ${theme.accent}55`,
+            } : {
+              background: 'transparent',
+              color: theme.textSecondary,
+              border: `1px solid ${theme.cardBorder}`,
+            }}
           >
             <Icon size={14} />
             {label}
             {id === 'today' && todayCount > 0 && (
-              <span className={clsx(
-                'ml-1 w-5 h-5 rounded-full text-xs flex items-center justify-center font-black',
-                filter === id ? 'bg-white/30 text-white' : 'bg-lavender-100 text-lavender-600'
-              )}>
+              <span
+                className="ml-1 w-5 h-5 rounded-full text-xs flex items-center justify-center font-black"
+                style={filter === id ? {
+                  background: `${theme.accent}30`,
+                  color: theme.accent,
+                } : {
+                  background: theme.accentBg,
+                  color: theme.accent,
+                }}
+              >
                 {todayCount}
               </span>
             )}
@@ -109,10 +133,12 @@ export default function TodoPage() {
             className="text-center py-16"
           >
             <p className="text-5xl mb-3">✅</p>
-            <p className="font-bold text-gray-500">
-              {filter === 'today' ? 'Aucune tâche pour aujourd\'hui' : 'Aucune tâche trouvée'}
+            <p className="font-bold" style={{ color: theme.textSecondary }}>
+              {filter === 'today' ? "Aucune tâche pour aujourd'hui" : 'Aucune tâche trouvée'}
             </p>
-            <p className="text-sm text-gray-400 mt-1">Commence par en ajouter une !</p>
+            <p className="text-sm mt-1" style={{ color: theme.textMuted }}>
+              Commence par en ajouter une !
+            </p>
           </motion.div>
         ) : (
           <div className="space-y-2.5">
@@ -127,7 +153,6 @@ export default function TodoPage() {
         )}
       </AnimatePresence>
 
-      {/* Modals */}
       <AddTaskModal
         open={addOpen}
         onClose={() => { setAddOpen(false); setEditTask(null) }}

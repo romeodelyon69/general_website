@@ -16,8 +16,8 @@ const COOKIE_OPTS = {
   // secure: true  ← uncomment if served over HTTPS
 }
 
-function issueTokens(userId) {
-  const accessToken  = jwt.sign({ userId }, JWT_SECRET, { expiresIn: ACCESS_TTL })
+function issueTokens(userId, isAdmin = false) {
+  const accessToken  = jwt.sign({ userId, isAdmin }, JWT_SECRET, { expiresIn: ACCESS_TTL })
   const refreshToken = crypto.randomBytes(40).toString('hex')
   const expiresAt    = new Date(Date.now() + REFRESH_TTL_MS).toISOString()
   tokens.create(refreshToken, userId, expiresAt)
@@ -40,9 +40,9 @@ router.post('/register', async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 12)
   users.create(id, username.trim(), passwordHash)
 
-  const { accessToken, refreshToken } = issueTokens(id)
+  const { accessToken, refreshToken } = issueTokens(id, false)
   res.cookie('refreshToken', refreshToken, COOKIE_OPTS)
-  res.status(201).json({ accessToken, username: username.trim() })
+  res.status(201).json({ accessToken, username: username.trim(), isAdmin: false })
 })
 
 // ── POST /api/auth/login ──────────────────────────────────────────────────
@@ -58,9 +58,10 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Identifiants incorrects' })
   }
 
-  const { accessToken, refreshToken } = issueTokens(user.id)
+  const isAdmin = user.isAdmin === true
+  const { accessToken, refreshToken } = issueTokens(user.id, isAdmin)
   res.cookie('refreshToken', refreshToken, COOKIE_OPTS)
-  res.json({ accessToken, username: user.username })
+  res.json({ accessToken, username: user.username, isAdmin })
 })
 
 // ── POST /api/auth/refresh ────────────────────────────────────────────────
@@ -80,9 +81,10 @@ router.post('/refresh', (req, res) => {
 
   // Rotate: delete old token, issue new pair
   tokens.delete(token)
-  const { accessToken, refreshToken } = issueTokens(user.id)
+  const isAdmin = user.isAdmin === true
+  const { accessToken, refreshToken } = issueTokens(user.id, isAdmin)
   res.cookie('refreshToken', refreshToken, COOKIE_OPTS)
-  res.json({ accessToken, username: user.username })
+  res.json({ accessToken, username: user.username, isAdmin })
 })
 
 // ── POST /api/auth/logout ─────────────────────────────────────────────────
