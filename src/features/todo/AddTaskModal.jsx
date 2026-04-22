@@ -3,7 +3,6 @@ import { useStore } from '../../store'
 import Modal from '../../components/Modal'
 
 const RECURRENCE_TYPES = [
-  { id: 'none',    label: '📋 En cours (sans date)' },
   { id: 'once',    label: '📅 Une seule fois' },
   { id: 'daily',   label: '🔁 Quotidien' },
   { id: 'weekly',  label: '📆 Hebdomadaire' },
@@ -13,11 +12,11 @@ const RECURRENCE_TYPES = [
 const DAY_LABELS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
 
 const CATEGORIES = [
-  { id: 'personal', label: 'Personnel', color: 'bg-lavender-500' },
-  { id: 'health',   label: 'Santé',     color: 'bg-mint-500' },
-  { id: 'work',     label: 'Travail',   color: 'bg-sky-500' },
-  { id: 'sport',    label: 'Sport',     color: 'bg-coral-500' },
-  { id: 'other',    label: 'Autre',     color: 'bg-gray-400' },
+  { id: 'Personnel', label: 'Personnel', color: 'bg-lavender-500' },
+  { id: 'Santé',     label: 'Santé',     color: 'bg-mint-500' },
+  { id: 'Travail',   label: 'Travail',   color: 'bg-sky-500' },
+  { id: 'Sport',     label: 'Sport',     color: 'bg-coral-500' },
+  { id: '__other__', label: 'Autre…',    color: 'bg-gray-400' },
 ]
 
 const PRIORITIES = [
@@ -26,36 +25,44 @@ const PRIORITIES = [
   { id: 'high',   label: 'Haute',   color: 'border-red-400 text-red-600' },
 ]
 
+const PRESET_IDS = CATEGORIES.filter(c => c.id !== '__other__').map(c => c.id)
+
 const DEFAULTS = {
-  title: '',
-  category: 'personal',
-  priority: 'medium',
-  recurrence: { type: 'none', days: [], day: 1 },
+  title:      '',
+  category:   'Personnel',
+  priority:   'medium',
+  recurrence: { type: 'once', recurrenceDay: 1, day: 1 },
 }
 
 export default function AddTaskModal({ open, onClose, editTask = null }) {
   const { addTodo, updateTodo } = useStore()
-  const [form, setForm] = useState(DEFAULTS)
+  const [form, setForm]                     = useState(DEFAULTS)
+  const [customCategory, setCustomCategory] = useState('')
 
-  // Pre-populate form when editTask changes
   useEffect(() => {
-    if (open) setForm(editTask ?? DEFAULTS)
-  }, [open, editTask])
+    if (!open) return
+    if (editTask) {
+      const isPreset = PRESET_IDS.includes(editTask.category)
+      setForm({ ...editTask, category: isPreset ? editTask.category : '__other__' })
+      setCustomCategory(isPreset ? '' : editTask.category)
+    } else {
+      setForm(DEFAULTS)
+      setCustomCategory('')
+    }
+  }, [open, editTask]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set    = (patch) => setForm(prev => ({ ...prev, ...patch }))
   const setRec = (patch) => set({ recurrence: { ...form.recurrence, ...patch } })
 
-  const toggleDay = (d) => {
-    const days = form.recurrence.days ?? []
-    setRec({ days: days.includes(d) ? days.filter(x => x !== d) : [...days, d] })
-  }
-
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.title.trim()) return
+    const finalCategory = form.category === '__other__'
+      ? (customCategory.trim() || 'Autre')
+      : form.category
     const task = {
       title:       form.title.trim(),
-      category:    form.category,
+      category:    finalCategory,
       priority:    form.priority,
       recurrence:  form.recurrence,
       completed:   editTask?.completed  ?? false,
@@ -66,9 +73,12 @@ export default function AddTaskModal({ open, onClose, editTask = null }) {
     onClose()
   }
 
+  const rec = form.recurrence
+
   return (
     <Modal open={open} onClose={onClose} title={editTask ? 'Modifier la tâche' : 'Nouvelle tâche'}>
       <form onSubmit={handleSubmit} className="space-y-5">
+
         {/* Title */}
         <div>
           <label className="label">Titre *</label>
@@ -100,6 +110,14 @@ export default function AddTaskModal({ open, onClose, editTask = null }) {
               </button>
             ))}
           </div>
+          {form.category === '__other__' && (
+            <input
+              className="input mt-2"
+              placeholder="Nom de la catégorie…"
+              value={customCategory}
+              onChange={e => setCustomCategory(e.target.value)}
+            />
+          )}
         </div>
 
         {/* Priority */}
@@ -125,7 +143,7 @@ export default function AddTaskModal({ open, onClose, editTask = null }) {
 
         {/* Recurrence type */}
         <div>
-          <label className="label">Récurrence</label>
+          <label className="label">Type</label>
           <div className="grid grid-cols-2 gap-2">
             {RECURRENCE_TYPES.map(r => (
               <button
@@ -133,7 +151,7 @@ export default function AddTaskModal({ open, onClose, editTask = null }) {
                 type="button"
                 onClick={() => setRec({ type: r.id })}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border-2 transition-all text-left ${
-                  form.recurrence.type === r.id
+                  rec.type === r.id
                     ? 'border-lavender-400 bg-lavender-50 text-lavender-700'
                     : 'border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
@@ -144,17 +162,19 @@ export default function AddTaskModal({ open, onClose, editTask = null }) {
           </div>
         </div>
 
-        {/* Date d'échéance (optionnelle pour 'once') */}
-        {form.recurrence.type === 'once' && (
+        {/* Once : date optionnelle */}
+        {rec.type === 'once' && (
           <div>
-            <label className="label">Date d'échéance <span className="text-gray-400 font-normal">(optionnelle)</span></label>
+            <label className="label">
+              Date d'échéance <span className="text-gray-400 font-normal">(optionnelle)</span>
+            </label>
             <input
               type="date"
               className="input"
-              value={form.recurrence.dueDate ?? ''}
+              value={rec.dueDate ?? ''}
               onChange={e => setRec({ dueDate: e.target.value || undefined })}
             />
-            {form.recurrence.dueDate && (
+            {rec.dueDate && (
               <button
                 type="button"
                 onClick={() => setRec({ dueDate: undefined })}
@@ -166,17 +186,18 @@ export default function AddTaskModal({ open, onClose, editTask = null }) {
           </div>
         )}
 
-        {form.recurrence.type === 'weekly' && (
+        {/* Weekly : jour de référence */}
+        {rec.type === 'weekly' && (
           <div>
-            <label className="label">Jours de la semaine</label>
+            <label className="label">Jour de référence</label>
             <div className="flex gap-2">
               {DAY_LABELS.map((day, i) => (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => toggleDay(i)}
+                  onClick={() => setRec({ recurrenceDay: i })}
                   className={`flex-1 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${
-                    (form.recurrence.days ?? []).includes(i)
+                    (rec.recurrenceDay ?? 1) === i
                       ? 'border-lavender-400 bg-lavender-50 text-lavender-700'
                       : 'border-gray-200 text-gray-500 hover:border-gray-300'
                   }`}
@@ -188,7 +209,8 @@ export default function AddTaskModal({ open, onClose, editTask = null }) {
           </div>
         )}
 
-        {form.recurrence.type === 'monthly' && (
+        {/* Monthly : jour du mois */}
+        {rec.type === 'monthly' && (
           <div>
             <label className="label">Jour du mois (1–31)</label>
             <input
@@ -196,11 +218,35 @@ export default function AddTaskModal({ open, onClose, editTask = null }) {
               className="input"
               min={1}
               max={31}
-              value={form.recurrence.day ?? 1}
+              value={rec.day ?? 1}
               onChange={e => setRec({ day: Number(e.target.value) })}
             />
           </div>
         )}
+
+        {/* Heure (tous types) */}
+        <div>
+          <label className="label">
+            Heure <span className="text-gray-400 font-normal">(optionnelle)</span>
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="time"
+              className="input w-36"
+              value={rec.time ?? ''}
+              onChange={e => setRec({ time: e.target.value || undefined })}
+            />
+            {rec.time && (
+              <button
+                type="button"
+                onClick={() => setRec({ time: undefined })}
+                className="text-xs text-gray-400 hover:text-red-500 font-semibold"
+              >
+                ✕ Supprimer
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Submit */}
         <div className="flex gap-3 pt-2">
@@ -211,6 +257,7 @@ export default function AddTaskModal({ open, onClose, editTask = null }) {
             {editTask ? '✓ Modifier' : '+ Ajouter'}
           </button>
         </div>
+
       </form>
     </Modal>
   )

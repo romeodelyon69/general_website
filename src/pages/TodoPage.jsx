@@ -6,6 +6,7 @@ import { getTheme } from '../themes'
 import { isDueToday, isCompletedToday } from '../utils/helpers'
 import TodoItem from '../features/todo/TodoItem'
 import AddTaskModal from '../features/todo/AddTaskModal'
+import TodoCalendar from '../features/todo/TodoCalendar'
 
 const FILTERS = [
   { id: 'today',     label: "Aujourd'hui", icon: Clock },
@@ -152,6 +153,9 @@ export default function TodoPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Calendar */}
+      <TodoCalendar />
 
       <AddTaskModal
         open={addOpen}

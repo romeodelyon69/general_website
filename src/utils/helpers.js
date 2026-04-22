@@ -19,19 +19,21 @@ export function getWeekDays(startDate = new Date()) {
 //   { type: 'monthly', day: 15 }
 
 export function isDueToday(todo) {
+  if (todo.paused) return false
   const today = new Date()
   const { recurrence } = todo
 
   switch (recurrence.type) {
     case 'none':
-      // No due date — always visible until completed
       return !todo.completed
     case 'once':
       return recurrence.dueDate ? isSameDay(parseISO(recurrence.dueDate), today) : !todo.completed
     case 'daily':
       return true
-    case 'weekly':
-      return (recurrence.days ?? []).includes(getDay(today))
+    case 'weekly': {
+      const day = recurrence.recurrenceDay ?? (recurrence.days ?? [])[0] ?? 1
+      return getDay(today) === day
+    }
     case 'monthly':
       return today.getDate() === recurrence.day
     default:
@@ -41,18 +43,18 @@ export function isDueToday(todo) {
 
 export function isCompletedToday(todo) {
   const key = todayStr()
-  if (todo.recurrence.type === 'once' || todo.recurrence.type === 'none') return !!todo.completed
+  if (todo.recurrence.type === 'once') return !!todo.completed
   return !!(todo.completions ?? {})[key]
 }
 
 export function recurrenceLabel(recurrence) {
   const DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+  const t = recurrence.time ? ` à ${recurrence.time}` : ''
   switch (recurrence.type) {
-    case 'none':    return '📋 En cours'
-    case 'once':    return recurrence.dueDate ? `📅 ${recurrence.dueDate}` : '📋 En cours'
-    case 'daily':   return '🔁 Quotidien'
-    case 'weekly':  return `🗓️ ${(recurrence.days ?? []).map(d => DAY_NAMES[d]).join(', ')}`
-    case 'monthly': return `📆 Mensuel (jour ${recurrence.day})`
+    case 'once':    return recurrence.dueDate ? `📅 ${recurrence.dueDate}${t}` : (t ? `🕐${t}` : '')
+    case 'daily':   return `🔁 Quotidien${t}`
+    case 'weekly':  return `🔁 Chaque ${DAY_NAMES[recurrence.recurrenceDay ?? 1]}${t}`
+    case 'monthly': return `📆 Mensuel (jour ${recurrence.day})${t}`
     default:        return ''
   }
 }

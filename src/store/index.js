@@ -75,7 +75,7 @@ export const useStore = create((set, get) => ({
         if (!todo) return s
         const today = todayStr()
         let updatedTodos
-        if (todo.recurrence.type === 'once' || todo.recurrence.type === 'none') {
+        if (todo.recurrence.type === 'once') {
           const wasComplete = !!todo.completed
           updatedTodos = s.todos.map(t =>
             t.id === id ? { ...t, completed: !t.completed } : t

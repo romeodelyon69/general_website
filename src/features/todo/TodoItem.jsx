@@ -1,9 +1,8 @@
-import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Trash2, Pencil, Check } from 'lucide-react'
+import { Trash2, Pencil, Check, Pause, Play } from 'lucide-react'
 import { useStore } from '../../store'
 import { getTheme } from '../../themes'
-import { isCompletedToday, recurrenceLabel, CATEGORY_COLORS } from '../../utils/helpers'
+import { isCompletedToday, recurrenceLabel } from '../../utils/helpers'
 import clsx from 'clsx'
 
 const PRIORITY_COLORS = {
@@ -14,10 +13,11 @@ const PRIORITY_COLORS = {
 
 export default function TodoItem({ todo, onEdit }) {
   const store = useStore()
-  const { toggleTodo, deleteTodo, page } = store
+  const { toggleTodo, deleteTodo, updateTodo, page } = store
   const theme = getTheme(page)
   const done = isCompletedToday(todo)
   const priorityColor = PRIORITY_COLORS[todo.priority] ?? theme.cardBorder
+  const isRecurring = !['once'].includes(todo.recurrence?.type)
 
   return (
     <motion.div
@@ -67,11 +67,26 @@ export default function TodoItem({ todo, onEdit }) {
           <span className="text-xs font-medium" style={{ color: theme.textMuted }}>
             {recurrenceLabel(todo.recurrence)}
           </span>
+          {todo.paused && (
+            <span className="text-xs font-bold px-1.5 py-0.5 rounded-md" style={{ background: theme.accentBg, color: theme.accent }}>
+              En pause
+            </span>
+          )}
         </div>
       </div>
 
       {/* Actions */}
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        {isRecurring && (
+          <button
+            onClick={() => updateTodo(todo.id, { paused: !todo.paused })}
+            className="p-1.5 rounded-lg transition-colors hover:opacity-80"
+            title={todo.paused ? 'Reprendre' : 'Mettre en pause'}
+            style={{ color: todo.paused ? theme.accent : theme.textMuted }}
+          >
+            {todo.paused ? <Play size={14} /> : <Pause size={14} />}
+          </button>
+        )}
         <button
           onClick={() => onEdit(todo)}
           className="p-1.5 rounded-lg transition-colors hover:opacity-80"
