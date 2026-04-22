@@ -92,6 +92,13 @@ export function getSportType(id) {
   return SPORT_TYPES.find(t => t.id === id) ?? SPORT_TYPES[SPORT_TYPES.length - 1]
 }
 
+// ─── Weight unit helpers ────────────────────────────────────────────────────
+export const kgToLb = (kg) => Math.round(kg * 2.2046 * 2) / 2
+export const lbToKg = (lb) => Math.round((lb / 2.2046) * 2) / 2
+// Handles both new {weight_kg} and legacy {weight} fields
+export const getWeightKg = (set) => set.weight_kg ?? set.weight ?? 0
+export const getWeightLb = (set) => set.weight_lb ?? kgToLb(getWeightKg(set))
+
 // ─── Colour utilities ──────────────────────────────────────────────────────
 export const CATEGORY_COLORS = {
   health:    'bg-mint-400/20 text-mint-700',

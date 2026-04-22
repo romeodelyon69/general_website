@@ -20,10 +20,29 @@ function computeLevel(xp) {
   return level
 }
 
+const DEFAULT_MODULES = { todo: true, sport: true, meals: true, grocery: true, ideas: true }
+
 export const useStore = create((set, get) => ({
       // ─── Navigation ────────────────────────────────────────────────────
       page: 'dashboard',
       setPage: (page) => set({ page }),
+
+      // ─── Modules actifs ─────────────────────────────────────────────────
+      modules: { ...DEFAULT_MODULES },
+      setModule: (id, enabled) => set((s) => ({
+        modules: { ...s.modules, [id]: enabled },
+      })),
+
+      // ─── Couleurs catégories (calendrier dashboard) ─────────────────────
+      categoryColors: {},
+      setCategoryColor: (cat, hex) => set((s) => ({
+        categoryColors: { ...s.categoryColors, [cat]: hex },
+      })),
+
+      // ─── Unité de poids ─────────────────────────────────────────────────
+      weightUnit: 'kg',
+      setWeightUnit:    (unit) => set({ weightUnit: unit }),
+      toggleWeightUnit: ()     => set(s => ({ weightUnit: s.weightUnit === 'kg' ? 'lb' : 'kg' })),
 
       // ─── Ideas ─────────────────────────────────────────────────────────
       ideas: [],
@@ -321,6 +340,11 @@ export const useStore = create((set, get) => ({
         pet:              serverData.pet              ?? s.pet,
         purchasedItems:   serverData.purchasedItems   ?? s.purchasedItems,
         equippedItems:    serverData.equippedItems    ?? s.equippedItems,
+        modules:          serverData.modules != null
+                            ? { ...DEFAULT_MODULES, ...serverData.modules }
+                            : s.modules,
+        categoryColors:   serverData.categoryColors   ?? s.categoryColors,
+        weightUnit:       serverData.weightUnit       ?? s.weightUnit,
       })),
 
       // ── Reset to defaults on logout ────────────────────────────────────
@@ -339,6 +363,9 @@ export const useStore = create((set, get) => ({
         pet:              INITIAL_PET,
         purchasedItems:   [],
         equippedItems:    { hat: null, accessory: null, background: null, furniture: [] },
+        modules:          { ...DEFAULT_MODULES },
+        categoryColors:   {},
+        weightUnit:       'kg',
         page:             'dashboard',
         lastLevelUp:      null,
       }),

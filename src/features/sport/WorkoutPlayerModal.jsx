@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Play, SkipForward, Check, Plus, Minus } from 'lucide-react'
 import { useStore } from '../../store'
-import { uid, todayStr } from '../../utils/helpers'
+import { uid, todayStr, kgToLb, lbToKg, getWeightKg } from '../../utils/helpers'
 import clsx from 'clsx'
 
 export const FEELINGS = [
@@ -43,7 +43,7 @@ function playRestEndSound() {
 }
 
 export default function WorkoutPlayerModal({ open, onClose, session }) {
-  const { addWorkoutLog, workoutLogs, addXP, addCoins, bumpHappiness } = useStore()
+  const { addWorkoutLog, workoutLogs, addXP, addCoins, bumpHappiness, weightUnit, toggleWeightUnit } = useStore()
 
   // ── Core state ─────────────────────────────────────────────────────────────
   const [phase, setPhase]                   = useState('intro')
@@ -62,8 +62,9 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
   const [prompt, setPrompt]       = useState(null) // 'resume' | 'conflict'
   const [savedData, setSavedData] = useState(null)
 
-  const startTsRef    = useRef(null)
+  const startTsRef     = useRef(null)
   const soundPlayedRef = useRef(false)
+  const prevUnitRef    = useRef(weightUnit)
 
   // ── Init / reset on open ───────────────────────────────────────────────────
   useEffect(() => {
@@ -105,6 +106,7 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
     if (!session || !['exercise', 'rest'].includes(phase)) return
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       sessionId:      session.id,
+      sessionName:    session.name,
       phase,
       exerciseIdx,
       setIdx,
@@ -158,6 +160,17 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
     return () => clearInterval(id)
   }, [phase])
 
+  // ── Convertit currentWeight si l'unité change en cours de séance ──────────
+  useEffect(() => {
+    const prev = prevUnitRef.current
+    prevUnitRef.current = weightUnit
+    if (prev === weightUnit) return
+    const val = parseFloat(currentWeight)
+    if (!isNaN(val) && val > 0) {
+      setCurrentWeight(String(weightUnit === 'lb' ? kgToLb(val) : lbToKg(val)))
+    }
+  }, [weightUnit]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ─────────────────────────────────────────────────────────────────────────
   if (!open || !session) return null
 
@@ -203,6 +216,7 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
   }
 
   // ── Weight prefill ─────────────────────────────────────────────────────────
+  // Returns weight in kg (handles legacy {weight} and new {weight_kg})
   function getLastWeight(exId, sIdx) {
     const sorted = [...workoutLogs]
       .filter(l => l.sessionId === session.id)
@@ -211,15 +225,18 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
       const exLog = log.exercises.find(e => e.id === exId)
       if (exLog) {
         const set = exLog.sets[sIdx] ?? exLog.sets[exLog.sets.length - 1]
-        if (set?.weight) return set.weight
+        const kg = getWeightKg(set)
+        if (kg) return kg
       }
     }
     return null
   }
 
   function prefillFor(ex, sIdx = 0) {
-    const last = getLastWeight(ex.id, sIdx)
-    setCurrentWeight(last != null ? String(last) : ex.weight ? String(ex.weight) : '')
+    const lastKg   = getLastWeight(ex.id, sIdx)
+    const defaultKg = parseFloat(ex.weight) || 0
+    const kg = lastKg != null ? lastKg : (defaultKg || null)
+    setCurrentWeight(kg != null ? String(weightUnit === 'lb' ? kgToLb(kg) : kg) : '')
     setCurrentReps(ex.reps ? String(ex.reps) : '12')
     setCurrentFeeling(null)
   }
@@ -233,9 +250,14 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
   }
 
   function validateSet() {
+    const raw       = parseFloat(currentWeight) || 0
+    const weight_kg = weightUnit === 'lb' ? lbToKg(raw) : raw
+    const weight_lb = weightUnit === 'kg' ? kgToLb(raw) : raw
     const setData = {
-      weight:  parseFloat(currentWeight) || 0,
-      reps:    parseInt(currentReps)     || 0,
+      weight:    weight_kg, // champ legacy
+      weight_kg,
+      weight_lb,
+      reps:    parseInt(currentReps) || 0,
       feeling: currentFeeling ?? 'medium',
     }
     const nextLogs = logs.map((l, i) =>
@@ -315,7 +337,7 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
         <div className="text-3xl">⚠️</div>
         <h3 className="text-lg font-black text-gray-800">Séance en cours</h3>
         <p className="text-sm text-gray-500">
-          Une séance "<span className="font-semibold text-gray-700">{savedData.sessionId}</span>" est déjà en cours.
+          Une séance "<span className="font-semibold text-gray-700">{savedData.sessionName ?? savedData.sessionId}</span>" est déjà en cours.
           Commencer une nouvelle séance effacera sa progression.
         </p>
         <div className="flex gap-3">
@@ -373,8 +395,16 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
               <div key={ex.id} className="flex items-center gap-3 text-sm">
                 <span className="w-5 text-[11px] font-black text-gray-300 text-right">{i + 1}.</span>
                 <span className="flex-1 font-semibold text-gray-700">{ex.name}</span>
-                <span className="text-xs text-gray-400">
-                  {ex.sets}×{ex.reps}{ex.weight ? ` · ${ex.weight}kg` : ''}
+                <span className="text-xs text-gray-400 flex items-center gap-0.5">
+                  {ex.sets}×{ex.reps}
+                  {ex.weight ? (
+                    <>
+                      {' · '}
+                      <button onClick={toggleWeightUnit} className="font-semibold hover:underline" title="Changer l'unité">
+                        {weightUnit === 'lb' ? kgToLb(parseFloat(ex.weight)) : ex.weight}{weightUnit}
+                      </button>
+                    </>
+                  ) : null}
                 </span>
               </div>
             ))}
@@ -532,9 +562,24 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
           {/* Weight + Reps */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Poids (kg)</label>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Poids</label>
+                <button
+                  onClick={toggleWeightUnit}
+                  className="text-[9px] font-black px-1.5 py-0.5 rounded-md border transition-all"
+                  style={{ color: '#818cf8', borderColor: '#818cf844', background: '#818cf811' }}
+                  title="Changer l'unité"
+                >
+                  {weightUnit}
+                </button>
+              </div>
               {lastW != null && (
-                <p className="text-[10px] text-gray-400 mb-1">Dernière fois : {lastW}kg</p>
+                <p className="text-[10px] text-gray-400 mb-1">
+                  Dernière fois :&nbsp;
+                  <button onClick={toggleWeightUnit} className="font-semibold hover:underline" title="Changer l'unité">
+                    {weightUnit === 'lb' ? kgToLb(lastW) : lastW}{weightUnit}
+                  </button>
+                </p>
               )}
               <input
                 className="input text-center text-2xl font-black"
@@ -624,7 +669,13 @@ export default function WorkoutPlayerModal({ open, onClose, session }) {
                     return (
                       <div key={j} className="flex items-center gap-3 text-xs text-gray-500">
                         <span className="text-gray-300 font-bold w-4">S{j + 1}</span>
-                        <span className="font-semibold text-gray-700">{s.weight}kg × {s.reps}</span>
+                        <button
+                          onClick={toggleWeightUnit}
+                          className="font-semibold text-gray-700 hover:underline"
+                          title="Changer l'unité"
+                        >
+                          {weightUnit === 'lb' ? (s.weight_lb ?? kgToLb(s.weight)) : (s.weight_kg ?? s.weight)}{weightUnit} × {s.reps}
+                        </button>
                         <span title={f?.label}>{f?.emoji}</span>
                       </div>
                     )

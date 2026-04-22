@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion'
-import { CheckSquare, Dumbbell, Utensils, ArrowRight, ShoppingCart, Lightbulb } from 'lucide-react'
+import { CheckSquare, Dumbbell, Utensils, ArrowRight, ShoppingCart, Lightbulb, CalendarDays } from 'lucide-react'
 import { useStore } from '../store'
 import { getTheme } from '../themes'
 import { isDueToday, isCompletedToday, getWeekDays, dateStr } from '../utils/helpers'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import MonthCalendar from '../features/dashboard/MonthCalendar'
 
 function StatCard({ icon, label, value, sub, onClick, theme }) {
   return (
@@ -98,6 +99,18 @@ export default function DashboardPage() {
           onClick={() => setPage('grocery')}
           theme={theme}
         />
+      </div>
+
+      {/* ── Calendrier mensuel ── */}
+      <div
+        className="rounded-2xl p-5"
+        style={{ background: theme.cardBg, border: `1px solid ${theme.cardBorder}` }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <CalendarDays size={16} style={{ color: theme.accent }} />
+          <h2 className="font-black text-sm" style={{ color: theme.textPrimary }}>Calendrier mensuel</h2>
+        </div>
+        <MonthCalendar theme={theme} />
       </div>
 
       {/* Main content */}

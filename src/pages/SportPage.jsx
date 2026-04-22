@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useStore } from '../store'
 import { getTheme } from '../themes'
-import { getWeekDays, dateStr, getSportType, SPORT_TYPES } from '../utils/helpers'
+import { getWeekDays, dateStr, getSportType, SPORT_TYPES, kgToLb, getWeightKg, getWeightLb } from '../utils/helpers'
 import AddActivityModal from '../features/sport/AddActivityModal'
 import WorkoutSessionModal, { WORKOUT_CATEGORIES } from '../features/sport/WorkoutSessionModal'
 import WorkoutPlayerModal, { FEELINGS } from '../features/sport/WorkoutPlayerModal'
@@ -157,6 +157,7 @@ function SportEventCard({ event, onComplete, onDelete, theme }) {
 function WorkoutSessionCard({ session, onEdit, onDelete, onPlanify, onPlay, theme }) {
   const [expanded, setExpanded] = useState(false)
   const cat = WORKOUT_CATEGORIES.find(c => c.id === session.category)
+  const { weightUnit, toggleWeightUnit } = useStore()
 
   return (
     <motion.div
@@ -240,7 +241,14 @@ function WorkoutSessionCard({ session, onEdit, onDelete, onPlanify, onPlay, them
                   <span className="flex-1 font-semibold" style={{ color: theme.textSecondary }}>{ex.name}</span>
                   <span className="text-xs font-medium shrink-0" style={{ color: theme.textMuted }}>
                     {ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : ex.sets || ex.reps || '—'}
-                    {ex.weight ? ` · ${ex.weight}kg` : ''}
+                    {ex.weight ? (
+                      <>
+                        {' · '}
+                        <button onClick={toggleWeightUnit} className="hover:underline" title="Changer l'unité">
+                          {weightUnit === 'lb' ? kgToLb(parseFloat(ex.weight)) : ex.weight}{weightUnit}
+                        </button>
+                      </>
+                    ) : null}
                   </span>
                 </div>
               ))}
@@ -467,23 +475,24 @@ function ActivityPickerModal({ open, onClose, onSelect, activities }) {
 }
 
 /* ─── Mini SVG line chart ────────────────────────────────────────────────── */
-function MiniLineChart({ points, color }) {
+function MiniLineChart({ points, color, weightUnit = 'kg' }) {
   if (points.length === 0) return (
     <div className="h-20 flex items-center justify-center text-xs font-semibold text-gray-400">
       Pas encore de données
     </div>
   )
-  const W = 280, H = 70, PL = 32, PR = 8, PT = 8, PB = 22
+  const W = 280, H = 70, PL = 36, PR = 8, PT = 8, PB = 22
   const values = points.map(p => p.y)
   const minY = Math.min(...values), maxY = Math.max(...values), rangeY = maxY - minY || 1
   const x = i => PL + (i / Math.max(points.length - 1, 1)) * (W - PL - PR)
   const y = v => PT + (1 - (v - minY) / rangeY) * (H - PT - PB)
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.y).toFixed(1)}`).join(' ')
+  const fmt = v => weightUnit === 'lb' ? kgToLb(v) : v
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-      <text x={PL - 4} y={PT + 5} textAnchor="end" fontSize="7" fill="#9ca3af">{maxY}kg</text>
-      {minY !== maxY && <text x={PL - 4} y={H - PB + 4} textAnchor="end" fontSize="7" fill="#9ca3af">{minY}kg</text>}
+      <text x={PL - 4} y={PT + 5} textAnchor="end" fontSize="7" fill="#9ca3af">{fmt(maxY)}{weightUnit}</text>
+      {minY !== maxY && <text x={PL - 4} y={H - PB + 4} textAnchor="end" fontSize="7" fill="#9ca3af">{fmt(minY)}{weightUnit}</text>}
       <line x1={PL} y1={PT} x2={PL} y2={H - PB} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
       <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       {points.map((p, i) => (
@@ -498,7 +507,7 @@ function MiniLineChart({ points, color }) {
 
 /* ─── Workout history tab ────────────────────────────────────────────────── */
 function WorkoutHistoryTab({ theme }) {
-  const { workoutLogs, workoutSessions, deleteWorkoutLog } = useStore()
+  const { workoutLogs, workoutSessions, deleteWorkoutLog, weightUnit, toggleWeightUnit } = useStore()
   const [selectedSession, setSelectedSession] = useState(null)
 
   const sessionsWithLogs = workoutSessions.filter(s => workoutLogs.some(l => l.sessionId === s.id))
@@ -509,7 +518,7 @@ function WorkoutHistoryTab({ theme }) {
   const chartData = selectedDef?.exercises.map(ex => {
     const points = filteredLogs.map(log => {
       const exLog = log.exercises.find(e => e.id === ex.id)
-      const weights = exLog?.sets.map(s => s.weight).filter(Boolean) ?? []
+      const weights = exLog?.sets.map(s => getWeightKg(s)).filter(Boolean) ?? []
       return { y: weights.length ? Math.max(...weights) : 0, label: log.date.slice(5), date: log.date }
     }).filter(p => p.y > 0)
     return { exercise: ex, points }
@@ -517,11 +526,32 @@ function WorkoutHistoryTab({ theme }) {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-black" style={{ color: theme.textPrimary }}>Historique</h1>
-        <p className="text-sm mt-0.5" style={{ color: theme.textSecondary }}>
-          {workoutLogs.length} séance{workoutLogs.length !== 1 ? 's' : ''} enregistrée{workoutLogs.length !== 1 ? 's' : ''}
-        </p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black" style={{ color: theme.textPrimary }}>Historique</h1>
+          <p className="text-sm mt-0.5" style={{ color: theme.textSecondary }}>
+            {workoutLogs.length} séance{workoutLogs.length !== 1 ? 's' : ''} enregistrée{workoutLogs.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <div
+          className="flex rounded-xl overflow-hidden shrink-0"
+          style={{ border: `1px solid ${theme.cardBorder}` }}
+        >
+          {['kg', 'lb'].map(unit => (
+            <button
+              key={unit}
+              onClick={() => weightUnit !== unit && toggleWeightUnit()}
+              className="px-4 py-2 text-sm font-bold transition-all"
+              style={weightUnit === unit ? {
+                background: theme.accent, color: theme.accentText ?? '#fff',
+              } : {
+                background: 'transparent', color: theme.textMuted,
+              }}
+            >
+              {unit}
+            </button>
+          ))}
+        </div>
       </div>
 
       {workoutLogs.length === 0 ? (
@@ -595,13 +625,15 @@ function WorkoutHistoryTab({ theme }) {
                           {ex.sets.map((s, i) => {
                             const f = FEELINGS.find(f => f.id === s.feeling)
                             return (
-                              <span
+                              <button
                                 key={i}
-                                className="text-[11px] rounded-lg px-2 py-0.5 font-semibold"
+                                onClick={toggleWeightUnit}
+                                className="text-[11px] rounded-lg px-2 py-0.5 font-semibold hover:opacity-75 transition-opacity"
                                 style={{ background: theme.accentBg, color: theme.textSecondary }}
+                                title="Changer l'unité"
                               >
-                                {s.weight}kg×{s.reps} {f?.emoji}
-                              </span>
+                                {weightUnit === 'lb' ? getWeightLb(s) : getWeightKg(s)}{weightUnit}×{s.reps} {f?.emoji}
+                              </button>
                             )
                           })}
                         </div>
@@ -627,12 +659,19 @@ function WorkoutHistoryTab({ theme }) {
                   <div className="flex items-center justify-between">
                     <p className="font-bold text-sm" style={{ color: theme.textPrimary }}>{ex.name}</p>
                     {points.length > 0 && (
-                      <span className="text-xs font-bold" style={{ color: theme.accent }}>
-                        Max : {Math.max(...points.map(p => p.y))}kg
-                      </span>
+                      <button
+                        onClick={toggleWeightUnit}
+                        className="text-xs font-bold hover:opacity-70 transition-opacity"
+                        style={{ color: theme.accent }}
+                        title="Changer l'unité"
+                      >
+                        Max : {weightUnit === 'lb'
+                          ? kgToLb(Math.max(...points.map(p => p.y)))
+                          : Math.max(...points.map(p => p.y))}{weightUnit}
+                      </button>
                     )}
                   </div>
-                  <MiniLineChart points={points} color={theme.accent} />
+                  <MiniLineChart points={points} color={theme.accent} weightUnit={weightUnit} />
                 </div>
               ))}
             </div>

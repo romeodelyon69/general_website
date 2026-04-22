@@ -8,6 +8,9 @@ const SYNC_KEYS = [
   'sportActivities', 'sportEvents', 'sportSchedule', 'workoutSessions', 'workoutLogs',
   'recipes', 'mealPlan', 'weekRecipes',
   'pet', 'purchasedItems', 'equippedItems',
+  'modules',
+  'categoryColors',
+  'weightUnit',
 ]
 
 function extractSyncData(state) {

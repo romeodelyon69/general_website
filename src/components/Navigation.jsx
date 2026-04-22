@@ -1,24 +1,28 @@
 import { motion } from 'framer-motion'
-import { LayoutDashboard, CheckSquare, Dumbbell, Utensils, LogOut, ShoppingCart, Lightbulb, Shield } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, Dumbbell, Utensils, LogOut, ShoppingCart, Lightbulb, Shield, Settings } from 'lucide-react'
 import { useStore } from '../store'
 import { useAuth } from '../contexts/AuthContext'
 import { getTheme } from '../themes'
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Accueil',  icon: LayoutDashboard },
+  { id: 'dashboard', label: 'Accueil',  icon: LayoutDashboard, alwaysVisible: true },
   { id: 'todo',      label: 'Tâches',   icon: CheckSquare },
   { id: 'sport',     label: 'Sport',    icon: Dumbbell },
   { id: 'meals',     label: 'Repas',    icon: Utensils },
   { id: 'grocery',   label: 'Courses',  icon: ShoppingCart },
   { id: 'ideas',     label: 'Idées',    icon: Lightbulb },
 ]
-const ADMIN_ITEM = { id: 'admin', label: 'Admin', icon: Shield }
+const ADMIN_ITEM = { id: 'admin', label: 'Admin', icon: Shield, alwaysVisible: true }
 
 export default function Navigation({ onLogout }) {
-  const { page, setPage } = useStore()
+  const { page, setPage, modules } = useStore()
   const { username, isAdmin } = useAuth()
   const theme = getTheme(page)
-  const navItems = isAdmin ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS
+
+  const allItems = isAdmin ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS
+  const navItems = allItems.filter(item =>
+    item.alwaysVisible || modules?.[item.id] !== false
+  )
 
   return (
     <>
@@ -77,22 +81,32 @@ export default function Navigation({ onLogout }) {
           })}
         </nav>
 
-        {/* User + logout */}
-        <div className="px-2 mb-2 flex items-center justify-between">
+        {/* User + Settings + Logout */}
+        <div className="px-2 mb-2 flex items-center justify-between gap-2">
           <span
             className="text-xs font-bold truncate"
             style={{ color: theme.navText }}
           >
             👤 {username}
           </span>
-          <button
-            onClick={onLogout}
-            className="p-1.5 rounded-lg transition-colors hover:opacity-80"
-            style={{ color: theme.textMuted }}
-            title="Déconnexion"
-          >
-            <LogOut size={14} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage('settings')}
+              className="p-1.5 rounded-lg transition-colors hover:opacity-80"
+              style={{ color: page === 'settings' ? theme.navActiveText : theme.textMuted }}
+              title="Paramètres"
+            >
+              <Settings size={14} />
+            </button>
+            <button
+              onClick={onLogout}
+              className="p-1.5 rounded-lg transition-colors hover:opacity-80"
+              style={{ color: theme.textMuted }}
+              title="Déconnexion"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -119,6 +133,15 @@ export default function Navigation({ onLogout }) {
             </button>
           )
         })}
+        {/* Settings fixe à droite sur mobile */}
+        <button
+          onClick={() => setPage('settings')}
+          className="flex flex-col items-center gap-0.5 py-2.5 px-3 transition-all duration-200"
+          style={{ color: page === 'settings' ? theme.navActiveText : theme.navText }}
+        >
+          <Settings size={20} />
+          <span className="text-[10px] font-bold">Config</span>
+        </button>
       </nav>
     </>
   )

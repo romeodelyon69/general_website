@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useStore } from '../../store'
 import Modal from '../../components/Modal'
-import { uid } from '../../utils/helpers'
+import { uid, kgToLb, lbToKg } from '../../utils/helpers'
 import clsx from 'clsx'
 
 export const WORKOUT_CATEGORIES = [
@@ -24,11 +24,13 @@ const DEFAULTS = {
 }
 
 export default function WorkoutSessionModal({ open, onClose, editSession = null }) {
-  const { addWorkoutSession, updateWorkoutSession } = useStore()
-  const [form, setForm] = useState(DEFAULTS)
+  const { addWorkoutSession, updateWorkoutSession, weightUnit } = useStore()
+  const [form, setForm]           = useState(DEFAULTS)
+  const [inputUnit, setInputUnit] = useState(weightUnit)
 
   useEffect(() => {
     if (open) {
+      setInputUnit(weightUnit)
       setForm(editSession
         ? { ...editSession, exercises: editSession.exercises.map(e => ({ ...e })) }
         : { ...DEFAULTS, exercises: [EMPTY_EXERCISE()] }
@@ -37,6 +39,21 @@ export default function WorkoutSessionModal({ open, onClose, editSession = null 
   }, [open, editSession])
 
   const setField = (patch) => setForm(prev => ({ ...prev, ...patch }))
+
+  const toggleInputUnit = () => {
+    setInputUnit(prev => {
+      const next = prev === 'kg' ? 'lb' : 'kg'
+      setForm(f => ({
+        ...f,
+        exercises: f.exercises.map(ex => {
+          const val = parseFloat(ex.weight)
+          if (!ex.weight || isNaN(val)) return ex
+          return { ...ex, weight: String(next === 'lb' ? kgToLb(val) : lbToKg(val)) }
+        }),
+      }))
+      return next
+    })
+  }
 
   const updateExercise = (id, patch) => setForm(prev => ({
     ...prev,
@@ -61,7 +78,11 @@ export default function WorkoutSessionModal({ open, onClose, editSession = null 
       name:      form.name.trim(),
       category:  form.category,
       emoji:     cat?.emoji ?? '💪',
-      exercises: form.exercises.filter(ex => ex.name.trim()),
+      exercises: form.exercises.filter(ex => ex.name.trim()).map(ex => {
+        const raw = parseFloat(ex.weight) || 0
+        const kg  = inputUnit === 'lb' ? lbToKg(raw) : raw
+        return { ...ex, weight: kg ? String(kg) : '' }
+      }),
     }
     if (editSession) updateWorkoutSession(editSession.id, session)
     else addWorkoutSession(session)
@@ -163,10 +184,23 @@ export default function WorkoutSessionModal({ open, onClose, editSession = null 
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">Poids (kg)</label>
+                    <div className="flex items-center gap-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase">Poids</label>
+                      <button
+                        type="button"
+                        onClick={toggleInputUnit}
+                        className="text-[9px] font-black px-1.5 py-0.5 rounded-md border transition-all"
+                        style={{ color: '#818cf8', borderColor: '#818cf844', background: '#818cf811' }}
+                      >
+                        {inputUnit}
+                      </button>
+                    </div>
                     <input
                       className="input !py-1 text-sm text-center"
                       placeholder="—"
+                      type="number"
+                      step="0.5"
+                      min="0"
                       value={ex.weight}
                       onChange={e => updateExercise(ex.id, { weight: e.target.value })}
                     />

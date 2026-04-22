@@ -14,6 +14,7 @@ import MealsPage from './pages/MealsPage'
 import GroceryPage from './pages/GroceryPage'
 import IdeaPage from './pages/IdeaPage'
 import AdminPage from './pages/AdminPage'
+import SettingsPage from './pages/SettingsPage'
 
 const PAGES = {
   dashboard: DashboardPage,
@@ -23,15 +24,24 @@ const PAGES = {
   grocery:   GroceryPage,
   ideas:     IdeaPage,
   admin:     AdminPage,
+  settings:  SettingsPage,
 }
 
 function AuthenticatedApp() {
   const { logout } = useAuth()
-  const { reset, page } = useStore()
+  const { reset, page, setPage, modules } = useStore()
   const theme = getTheme(page)
   const Page = PAGES[page] ?? DashboardPage
 
   useDataSync()
+
+  // Rediriger vers le dashboard si le module de la page courante est désactivé
+  useEffect(() => {
+    const modulePages = ['todo', 'sport', 'meals', 'grocery', 'ideas']
+    if (modulePages.includes(page) && modules?.[page] === false) {
+      setPage('dashboard')
+    }
+  }, [modules, page])
 
   const handleLogout = async () => {
     await logout()
