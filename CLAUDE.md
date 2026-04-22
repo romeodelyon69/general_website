@@ -20,7 +20,14 @@ src/
 ├── contexts/AuthContext.jsx — auth JWT + refresh token
 ├── components/Navigation.jsx
 ├── features/            — une feature par page (todo, sport, meals, grocery, ideas)
+│   ├── todo/
+│   │   ├── AddTaskModal.jsx   — formulaire création/édition tâche
+│   │   ├── TodoItem.jsx       — item avec bouton pause (récurrentes)
+│   │   └── TodoCalendar.jsx   — calendrier sem./mois sous la liste
+│   └── sport/
+│       └── WorkoutPlayerModal.jsx — player séance musculation
 └── pages/               — composants de page
+    └── TodoPage.jsx     — liste + filtres + calendrier
 
 backend/
 ├── server.js
@@ -73,12 +80,63 @@ const theme = getTheme(page)
 ## Fonctionnalités existantes
 
 - **Dashboard** — tableau de bord général
-- **Tâches** — todos avec récurrence et priorités
-- **Sport** — planning hebdo drag & drop + séances musculation + historique
+- **Tâches** — todos avec récurrence, priorités, pause, calendrier (voir détails ci-dessous)
+- **Sport** — planning hebdo drag & drop + séances musculation + historique + persistence session
 - **Repas** — planning hebdo drag & drop + bibliothèque recettes + recherche MealDB
 - **Courses** — liste avec check/uncheck
 - **Idées** — board de suggestions (idée → en cours → réalisée)
 - **Admin** — réservé à romeo : liste utilisateurs + leurs idées
+
+## Tâches — Modèle de données
+
+```js
+{
+  id, title, category, priority,   // category = string libre
+  completed, completions,           // completed pour 'once', completions[date] pour récurrentes
+  paused,                           // boolean — masque des onglets today/recurring si true
+  recurrence: {
+    type: 'once' | 'daily' | 'weekly' | 'monthly',
+    dueDate: 'yyyy-MM-dd',   // once — optionnel
+    time: 'HH:mm',           // tous types — optionnel
+    recurrenceDay: 0-6,      // weekly — 0=Dim, 1=Lun…
+    day: 1-31,               // monthly
+  }
+}
+```
+
+### Règles métier tâches
+
+- **`once` sans `dueDate`** = tâche sans échéance (visible dans today jusqu'à complétion)
+- **`paused: true`** → `isDueToday()` retourne `false`, tâche exclue de l'onglet Aujourd'hui
+- **Catégorie** : string libre, presets = `Personnel / Santé / Travail / Sport`, sinon champ texte
+- **Onglet "Aujourd'hui"** : `isDueToday()` — daily=toujours, weekly=si bon jour, monthly=si bon jour du mois
+- **`toggleTodo`** : `once` → flip `completed`, autres → `completions[today] = true`
+
+### Calendrier tâches (TodoCalendar.jsx)
+
+- Vue **Semaine** (défaut) : noms des tâches dans chaque colonne
+- Vue **Mois** : points colorés (couleur = priorité)
+- `isTaskDueOn(todo, date)` — même logique que `isDueToday` mais pour une date arbitraire
+- Aujourd'hui : cercle accent + fond teinté
+- Navigation prev/next + bouton "Aujourd'hui"
+
+## Sport — Séance WorkoutPlayerModal
+
+Persistence de session via `localStorage('planner_active_workout')`.
+
+```js
+// Structure sauvegardée
+{ sessionId, phase, exerciseIdx, setIdx, logs, startTs, restConfig, restEndTs, currentWeight, currentReps, currentFeeling }
+```
+
+- **X** → ferme le modal sans perdre la progression (reprise au prochain ouverture)
+- **Abandonner** → `window.confirm` + `localStorage.removeItem`
+- **Rest countdown** : basé sur `restEndTs` (epoch ms) — survit aux changements d'onglet/refresh
+- **+15s / -15s** : `Math.max(Date.now() + MIN_REST * 1000, ts + delta * 1000)`
+- **Son fin de repos** : Web Audio API, 3 bips ascendants (660→770→880 Hz)
+- **`rest_done`** : écran "Repos terminé !" pendant 1.5s puis transition auto vers `exercise`
+- **Resume prompt** : même `sessionId` → propose de reprendre
+- **Conflict prompt** : `sessionId` différent → demande confirmation avant d'écraser
 
 ## Auth & sécurité
 
@@ -104,6 +162,8 @@ npm run dev          # port 5173
 # Backend
 cd backend && npm run dev   # port 3001
 ```
+
+⚠️ Le backend Romeo's Tavern tourne aussi sur 3001 — killer son process avant de lancer celui-ci.
 
 ## Déploiement NAS
 
