@@ -20,14 +20,18 @@ src/
 ├── contexts/AuthContext.jsx — auth JWT + refresh token
 ├── components/Navigation.jsx
 ├── features/            — une feature par page (todo, sport, meals, grocery, ideas)
+│   ├── dashboard/
+│   │   └── MonthCalendar.jsx  — calendrier dashboard (vues semaine/mois, filtres, color picker)
 │   ├── todo/
 │   │   ├── AddTaskModal.jsx   — formulaire création/édition tâche
 │   │   ├── TodoItem.jsx       — item avec bouton pause (récurrentes)
 │   │   └── TodoCalendar.jsx   — calendrier sem./mois sous la liste
 │   └── sport/
-│       └── WorkoutPlayerModal.jsx — player séance musculation
+│       ├── WorkoutPlayerModal.jsx   — player séance musculation
+│       └── WorkoutSessionModal.jsx  — création/édition séance
 └── pages/               — composants de page
-    └── TodoPage.jsx     — liste + filtres + calendrier
+    ├── TodoPage.jsx     — liste + filtres + calendrier
+    └── SettingsPage.jsx — modules actifs + unité de poids
 
 backend/
 ├── server.js
@@ -79,12 +83,13 @@ const theme = getTheme(page)
 
 ## Fonctionnalités existantes
 
-- **Dashboard** — tableau de bord général
+- **Dashboard** — tableau de bord + calendrier mensuel/semaine (`MonthCalendar.jsx`)
 - **Tâches** — todos avec récurrence, priorités, pause, calendrier (voir détails ci-dessous)
-- **Sport** — planning hebdo drag & drop + séances musculation + historique + persistence session
+- **Sport** — planning hebdo drag & drop + séances musculation + historique + persistence session + unités kg/lb
 - **Repas** — planning hebdo drag & drop + bibliothèque recettes + recherche MealDB
 - **Courses** — liste avec check/uncheck
 - **Idées** — board de suggestions (idée → en cours → réalisée)
+- **Paramètres** — modules actifs (masquage nav) + unité de poids par défaut
 - **Admin** — réservé à romeo : liste utilisateurs + leurs idées
 
 ## Tâches — Modèle de données
@@ -126,7 +131,7 @@ Persistence de session via `localStorage('planner_active_workout')`.
 
 ```js
 // Structure sauvegardée
-{ sessionId, phase, exerciseIdx, setIdx, logs, startTs, restConfig, restEndTs, currentWeight, currentReps, currentFeeling }
+{ sessionId, sessionName, phase, exerciseIdx, setIdx, logs, startTs, restConfig, restEndTs, currentWeight, currentReps, currentFeeling }
 ```
 
 - **X** → ferme le modal sans perdre la progression (reprise au prochain ouverture)
@@ -137,6 +142,36 @@ Persistence de session via `localStorage('planner_active_workout')`.
 - **`rest_done`** : écran "Repos terminé !" pendant 1.5s puis transition auto vers `exercise`
 - **Resume prompt** : même `sessionId` → propose de reprendre
 - **Conflict prompt** : `sessionId` différent → demande confirmation avant d'écraser
+
+## Sport — Unités de poids (kg / lb)
+
+- `weightUnit` dans le store Zustand (`'kg'` par défaut), persisté via `useDataSync`
+- `setWeightUnit(unit)` et `toggleWeightUnit()` disponibles dans le store
+- Helpers dans `utils/helpers.js` : `kgToLb(kg)`, `lbToKg(lb)`, `getWeightKg(set)`, `getWeightLb(set)`
+- Arrondi au **0.5 le plus proche** (compatible avec `step="0.5"` des inputs)
+- Stockage : chaque set logué a `weight` (kg, legacy), `weight_kg` et `weight_lb`
+- Rétrocompat : anciens sets avec uniquement `weight` → traités comme kg
+- Toggle visible dans : SettingsPage, haut de l'historique SportPage, inline WorkoutSessionModal/PlayerModal
+- Tous les affichages de poids sont cliquables pour basculer l'unité globale
+
+## Dashboard — Calendrier (MonthCalendar.jsx)
+
+- Vue **Semaine** (défaut) : agenda 7 colonnes, toutes les tâches + séances sans limite
+- Vue **Mois** : grille classique, max 3 événements par cellule + indicateur de débordement
+- Toggle Sem./Mois dans l'en-tête, navigation prev/next + bouton Aujourd'hui
+- Tâches colorées par catégorie — presets : `Personnel`, `Santé`, `Travail`, `Sport`, `Autre`
+- Catégories custom (saisies dans "Autre…" d'AddTaskModal) apparaissent automatiquement
+- Color picker par catégorie (clic sur le carré coloré), couleur persistée dans `categoryColors` (store + sync)
+- Séances sport colorées par type (7 types, famille de couleurs distincte des tâches)
+- Panneau Réglages : masquer catégories tâches, masquer types sport, filtre passé/futur, affichage heure/légende
+- Légende interactive : clic pour masquer/afficher, clic sur carré pour changer la couleur
+- Clic sur une tâche → panneau détail (titre, statut, catégorie, priorité, récurrence, heure, notes)
+
+## Paramètres (SettingsPage)
+
+- Modules actifs : toggle par onglet (Tâches/Sport/Repas/Courses/Idées), persisté dans `modules` (store + sync)
+- Modules désactivés masqués dans la navigation, redirection auto vers dashboard si page active désactivée
+- Unité de poids : toggle kg/lb persisté dans `weightUnit` (store + sync)
 
 ## Auth & sécurité
 
